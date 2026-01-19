@@ -4,6 +4,7 @@ from embeddings import bert_embedder
 from understanding import topic_classifier,keyword_extractor,difficulty_estimator
 from generation import explainer
 from evaluation import metrics,logger
+from llm.local import DEFAULT_MODEL_FILE
 
 def run(ip:str,option:int=1)->dict:
     #1: take input text
@@ -30,7 +31,7 @@ def run(ip:str,option:int=1)->dict:
     op=explainer.explain_all_topics(topic_chunks,topic_keywords,difficulty)
     #evaluation metrics
     evaluation=metrics.compute_metrics(op)
-    logger.log_run(input_text,op,evaluation,explainer.MODEL_NAME)
+    logger.log_run(input_text,op,evaluation,DEFAULT_MODEL_FILE)
     return op
 
 

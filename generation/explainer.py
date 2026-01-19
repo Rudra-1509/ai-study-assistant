@@ -1,10 +1,8 @@
-from ctransformers import AutoModelForCausalLM
-
-MODEL_NAME="mistralai/Mistral-7B-Instruct-v0.3"
-MODEL_DIR="models/mistral"
-MODEL_FILE="Mistral-7B-Instruct-v0.3.Q4_K_M.gguf"
-
-llm = AutoModelForCausalLM.from_pretrained(MODEL_DIR,model_file=MODEL_FILE,model_type="mistral",context_length=2048,threads=8)
+from llm.local import LocalLLMClient
+llm_client = LocalLLMClient(
+    model_dir="models/mistral",
+    model_file="Mistral-7B-Instruct-v0.3.Q4_K_M.gguf",
+)
 
 def chunk_selector(chunks:list[str],keywords:list[str],max_chunk_lim:int=3)->list[str]:
     #check each chunk's contribution(density->contri/chunk len) for the keywords and take the top scores
@@ -54,20 +52,15 @@ Context:
 Task:
 Explain the topic clearly.
 Adjust depth, tone, and assumptions based on the difficulty level.
+Do not repeat headings or restart explanations.
 [/INST]
 """
 
     return prompt
 
-def generate_explanation(prompt:str,difficulty:str,max_new_tokens:int=256)->str:
-    if difficulty == "easy":
-        temperature = 0.8
-    elif difficulty == "hard":
-        temperature = 0.3
-    else:
-        temperature=0.6
-    output=llm(prompt,max_new_tokens=max_new_tokens,temperature=temperature,top_p=0.9,stop=["### END"])
+def generate_explanation(prompt:str)->str:
 
+    output=llm_client.generate(prompt)
     text= str(output)
     return text.strip()
 
@@ -79,7 +72,7 @@ def explain_all_topics(topic_chunks: dict[int, list[str]],topic_keywords: dict[i
         difficulty=topic_difficulty.get(label,{}).get("difficulty", "medium")
 
         prompt=build_prompt_for_topic(chunks,keywords,difficulty)
-        explanation=generate_explanation(prompt,difficulty)
+        explanation=generate_explanation(prompt)
         explanations[label]={
             "difficulty":difficulty,
             "keywords":keywords,
