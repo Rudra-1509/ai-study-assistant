@@ -1,0 +1,32 @@
+ai-study-assistant/
+ ├── ingestion/
+ │   ├── text_loader.py✅
+ │   ├── pdf_loader.py✅
+ │   └── image_loader.py✅
+ ├── preprocessing/
+ │   ├── cleaner.py✅
+ │   ├── chunker.py✅
+ │   └── normalizer.py
+ ├── embeddings/
+ │   └── bert_embedder.py✅
+ ├── understanding/
+ │   ├── topic_classifier.py✅
+ │   ├── keyword_extractor.py✅
+ │   └── difficulty_estimator.py✅
+ ├── generation/
+ │   └── explainer.py✅
+ ├── evaluation/
+ │   ├── metrics.py✅
+ │   └── logger.py✅
+ ├── controller.py✅
+ ├── app.py✅
+ ├── README.md
+ └── what_i_learned.md
+
+ 10/15 
+
+    explanations[label]={
+    "difficulty":difficulty,
+    "keywords":keywords,
+    "explanation":explanation
+    }
