@@ -1,8 +1,8 @@
-from preprocessing import cleaner,chunker
-from embeddings import bert_embedder
-from understanding import topic_classifier,keyword_extractor,difficulty_estimator
-from generation import explainer
-from evaluation import metrics,logger
+from backend.preprocessing import cleaner,chunker
+from backend.embeddings import bert_embedder
+from backend.understanding import topic_classifier,keyword_extractor,difficulty_estimator
+from backend.generation import explainer
+from backend.evaluation import metrics,logger
 
 
 def run(input_text:str)->dict:

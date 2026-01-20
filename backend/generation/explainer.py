@@ -1,8 +1,5 @@
-from llm.local import LocalLLMClient
-llm_client = LocalLLMClient(
-    model_dir="models/mistral",
-    model_file="Mistral-7B-Instruct-v0.3.Q4_K_M.gguf",
-)
+from backend.llm.factory import get_llm_client
+llm_client = get_llm_client()
 
 def chunk_selector(chunks:list[str],keywords:list[str],max_chunk_lim:int=3)->list[str]:
     #check each chunk's contribution(density->contri/chunk len) for the keywords and take the top scores
@@ -28,7 +25,7 @@ def difficulty_chunk_limit(difficulty: str)->int:
     return {
         "easy":2,
         "medium":4,
-        "hard":6
+        "hard":10
     }.get(difficulty,4)
 
 def build_prompt_for_topic(chunks:list[str],keywords:list[str],difficulty:str)->str:

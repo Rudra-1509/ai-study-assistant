@@ -1,6 +1,6 @@
 import os
-from llm.local import LocalLLMClient
-from llm.cloudfare import CloudflareLLMClient
+from backend.llm.local import LocalLLMClient
+from backend.llm.cloudfare import CloudflareLLMClient
 
 def get_llm_client():
     """

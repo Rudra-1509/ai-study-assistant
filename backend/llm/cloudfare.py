@@ -1,4 +1,4 @@
-from .base import LLMClient
+from backend.llm.base import LLMClient
 import os
 import requests
 

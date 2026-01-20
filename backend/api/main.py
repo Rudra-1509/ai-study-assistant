@@ -1,14 +1,15 @@
 from dotenv import load_dotenv
 load_dotenv()
-
-from controller import run as run_controller
-from fastapi import FastAPI,Form,File,UploadFile,HTTPException
 import tempfile
 import os
 
-from ingestion.text_loader import load_text
-from ingestion.pdf_loader import load_pdf
-from ingestion.img_loader import load_img
+from fastapi import FastAPI,Form,File,UploadFile,HTTPException
+
+from backend.ingestion.text_loader import load_text
+from backend.ingestion.pdf_loader import load_pdf
+from backend.ingestion.img_loader import load_img
+
+from backend.controller import run as run_controller
 
 app=FastAPI(title="AI Study Assistant",
             description="Analyze text, PDFs, or images and generate study-friendly explanations.",

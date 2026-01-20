@@ -1,7 +1,7 @@
 import json
 from datetime import datetime,timezone
 
-LOG_FILE= "run_logs.jsonl"
+LOG_FILE= "backend/run_logs.jsonl"
 
 def log_run(input_text: str,explanations: dict,metrics: dict) -> None:
     log_entry = {
