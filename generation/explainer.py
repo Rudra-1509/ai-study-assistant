@@ -51,6 +51,7 @@ Context:
 
 Task:
 Explain the topic clearly.
+Give a proper heading for a topic.
 Adjust depth, tone, and assumptions based on the difficulty level.
 Do not repeat headings or restart explanations.
 [/INST]

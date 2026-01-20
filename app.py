@@ -1,8 +1,6 @@
-import bootstrap
+from dotenv import load_dotenv
+load_dotenv()
 import controller
-import os
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-
 
 def main():
     option=input("1>txt 2>pdf 3>img: ")
