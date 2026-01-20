@@ -12,7 +12,7 @@ def load_img(source: str)->str:
     if path.exists():
         ext=path.suffix.lower()
         if ext not in ('.png', '.jpg', '.jpeg'):
-            raise ValueError("Ony txt, pdf and jpg files are allowed")
+            raise ValueError("Only Image files are allowed")
     text=""
     try:
         img=Image.open(path).convert("L")

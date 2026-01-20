@@ -13,7 +13,7 @@ def load_pdf(source:str)->str:
     path=Path(source)
     if path.exists():
         if path.suffix.lower()!='.pdf':
-            raise ValueError("Ony txt, pdf and jpg files are allowed")
+            raise ValueError("Only PDF files are allowed")
     output_text=[]
     try:
         with fitz.open(path) as doc:
@@ -31,5 +31,5 @@ def load_pdf(source:str)->str:
         output_text="\n".join(output_text)
     except Exception as e:
         raise ValueError(f"Failed to read pdf file:{e}")
-    return output_text
+    return output_text.strip()
             
