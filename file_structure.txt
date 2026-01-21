@@ -6,7 +6,6 @@ ai-study-assistant/
  ├── preprocessing/
  │   ├── cleaner.py✅
  │   ├── chunker.py✅
- │   └── normalizer.py
  ├── embeddings/
  │   └── bert_embedder.py✅
  ├── understanding/
@@ -22,11 +21,3 @@ ai-study-assistant/
  ├── app.py✅
  ├── README.md
  └── what_i_learned.md
-
- 10/15 
-
-    explanations[label]={
-    "difficulty":difficulty,
-    "keywords":keywords,
-    "explanation":explanation
-    }
