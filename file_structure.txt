@@ -1,4 +1,4 @@
-ai-study-assistant/
+backend/
  ├── ingestion/
  │   ├── text_loader.py✅
  │   ├── pdf_loader.py✅
@@ -21,3 +21,37 @@ ai-study-assistant/
  ├── app.py✅
  ├── README.md
  └── what_i_learned.md
+
+frontend/
+├── public/
+│   └── favicon.svg
+│
+├── src/
+│   ├── api/
+│   │   └── analyze.ts
+│   │
+│   ├── components/
+│   │   ├── UploadBox.tsx
+│   │   ├── TopicCard.tsx
+│   │   ├── ResultView.tsx
+│   │   └── Loader.tsx
+│   │
+│   ├── types/
+│   │   └── study.ts --->type/interface config file
+│   │
+│   ├── hooks/
+│   │   └── useAnalyze.ts
+│   │
+│   ├── styles/
+│   │   └── globals.css
+│   │
+│   ├── App.tsx
+│   ├── main.tsx
+│   └── vite-env.d.ts
+│
+├── index.html
+├── package.json
+├── tailwind.config.js
+├── postcss.config.js
+├── tsconfig.json
+└── vite.config.ts
