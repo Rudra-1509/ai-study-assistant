@@ -1,5 +1,6 @@
 export type Difficulty="easy"|"medium"|"hard";
-export type InputType="text"|"pdf"|"img";
+
+export type InputType="text"|"pdf"|"image";
 
 export interface TextInput {
   input_type: "text";
@@ -7,11 +8,12 @@ export interface TextInput {
 }
 
 export interface FileInput {
-  input_type: "pdf" | "img";
+  input_type: "pdf" | "image";
   file: File;
 }
 
 export type StudyInput=TextInput|FileInput;
+
 
 export interface TopicResult {
   difficulty: Difficulty;
