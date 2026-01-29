@@ -5,23 +5,37 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
+import { useState } from "react";
 interface UploadCardProps {
   type: "pdf" | "image";
   imgSrc: string;
+  onFileSelect: (file: File) => void;
+  disabled: boolean;
 }
 
-export function UploadCard({ imgSrc, type }: UploadCardProps) {
+export function UploadCard({
+  imgSrc,
+  type,
+  onFileSelect,
+  disabled,
+}: UploadCardProps) {
+  const [uploaded, setUploaded] = useState(false);
   return (
-    <label className="block cursor-pointer">
+    <label
+      className={`block 
+      ${disabled ? "pointer-events-none opacity-45" : "cursor-pointer"}
+    `}
+    >
       <input
         type="file"
         className="hidden"
+        disabled={disabled}
         accept={type === "pdf" ? "application/pdf" : "image/*"}
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) {
-            console.log("Selected:", file);
+            onFileSelect(file);
+            setUploaded(true);
           }
         }}
       />
@@ -43,7 +57,7 @@ export function UploadCard({ imgSrc, type }: UploadCardProps) {
         {/* image */}
         <div className="relative z-20 aspect-square overflow-hidden">
           <img
-            src={imgSrc}
+            src={uploaded? '/upload-done.png' :imgSrc}
             alt={type}
             className="
             h-full w-full object-cover
@@ -68,7 +82,7 @@ export function UploadCard({ imgSrc, type }: UploadCardProps) {
           </CardTitle>
 
           <CardDescription className="text-sm text-white/80 mt-1">
-            {type === "pdf"
+            {uploaded?"Upload Done":type === "pdf"
               ? "PDF extractions are not the best FYI."
               : "Image extractions are good."}
           </CardDescription>
