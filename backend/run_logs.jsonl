@@ -12,3 +12,4 @@
 {"timestamp": "2026-01-20T15:27:49.983927+00:00", "model": "Mistral-7B-Instruct-v0.3.Q4_K_M.gguf", "input_length_chars": 9939, "num_topics": 3, "metrics_summary": {"num_topics": 3, "avg_word_count": 208.0, "avg_keyword_coverage": 0.667}}
 {"timestamp": "2026-01-20T15:38:35.487269+00:00", "model": "Mistral-7B-Instruct-v0.3.Q4_K_M.gguf", "input_length_chars": 9939, "num_topics": 3, "metrics_summary": {"num_topics": 3, "avg_word_count": 207.67, "avg_keyword_coverage": 0.6}}
 {"timestamp": "2026-01-20T18:08:38.393291+00:00", "input_length_chars": 27, "num_topics": 1, "metrics_summary": {"num_topics": 1, "avg_word_count": 200.0, "avg_keyword_coverage": 0.5}}
+{"timestamp": "2026-01-30T10:14:29.123127+00:00", "input_length_chars": 1783, "num_topics": 1, "metrics_summary": {"num_topics": 1, "avg_word_count": 209.0, "avg_keyword_coverage": 0.6}}

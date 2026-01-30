@@ -1,0 +1,84 @@
+🔴 Frontend ↔ Backend Integration Errors (What Went Wrong)
+1️⃣ Backend wasn’t running
+
+Frontend fetch failed with ERR_CONNECTION_REFUSED
+
+Cause: backend server not started
+
+Fix: run python -m uvicorn backend.api.main:app --reload
+
+2️⃣ uvicorn not found on Windows
+
+Error: 'uvicorn' is not recognized
+
+Cause: virtual environment not activated / PATH issue
+
+Fix: activate venv or use python -m uvicorn
+
+3️⃣ CORS blocked the request
+
+Error: No 'Access-Control-Allow-Origin' header
+
+Cause: frontend (localhost:5173) calling backend (127.0.0.1:8000)
+
+Fix: add CORSMiddleware to FastAPI
+
+4️⃣ FormData schema mismatch (BIG one)
+
+Error: "Input should be a valid string"
+
+Cause: file sent as "content" instead of "file"
+
+Fix:
+
+"content" → text only
+
+"file" → binary uploads
+
+5️⃣ FastAPI Form vs File confusion
+
+Backend expected content: str
+
+Frontend sent UploadFile
+
+Fix: backend accepts both Form and File
+
+6️⃣ Invalid Python set syntax
+
+Code: {"pdf" | "image"}
+
+Error: TypeError: unsupported operand type(s) for |
+
+Cause: | is NOT logical OR in Python
+
+Fix: use {"pdf", "image"}
+
+7️⃣ Temp file lost extension
+
+Error: ValueError("Only Image files are allowed")
+
+Cause: temp file saved without .png/.jpg
+
+Fix: use suffix=os.path.splitext(file.filename)[1]
+
+8️⃣ Windows file-lock error
+
+Error: PermissionError [WinError 32]
+
+Cause: trying to delete a file still open
+
+Fix: file.file.close() before os.remove()
+
+9️⃣ Backend returned 500 instead of handled error
+
+Cause: unhandled exception inside /analyze
+
+Fix: clean try/finally and proper exception handling
+
+🔟 Frontend navigation timing confusion
+
+data from hook not immediately available
+
+Cause: async state updates
+
+Fix: use returned result or navigate after await

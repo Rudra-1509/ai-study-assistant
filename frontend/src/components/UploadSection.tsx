@@ -1,15 +1,45 @@
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { UploadCard } from "./UploadCard";
-
+import useAnalyze from "@/hooks/useAnalyze";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const UploadSection = () => {
+  const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [activeType, setActiveType] = useState<"pdf" | "image" | "text" | null>(
     null,
   );
   const [textValue, setTextValue] = useState("");
+
+  const {loading, error, runAnalyze } = useAnalyze();
+  const handleSubmit = async () => {
+    if (!activeType) return;
+
+    let result;
+
+    if (activeType === "image" && selectedFile) {
+      result = await runAnalyze({
+        input_type: "image",
+        file: selectedFile,
+      });
+    } else if (activeType === "pdf" && selectedFile) {
+      result = await runAnalyze({
+        input_type: "pdf",
+        file: selectedFile,
+      });
+    } else if (activeType === "text" && textValue.trim()) {
+      result = await runAnalyze({
+        input_type: "text",
+        content: textValue,
+      });
+    }
+
+    if (result) {
+      navigate("/output", { state: { result } });
+    }
+  };
 
   const resetAll = () => {
     setSelectedFile(null);
@@ -28,7 +58,7 @@ const UploadSection = () => {
             setSelectedFile(file);
             setActiveType("pdf");
           }}
-          disabled={activeType !==null && activeType!=="pdf"}
+          disabled={activeType !== null && activeType !== "pdf"}
           onRemove={resetAll}
         />
         <UploadCard
@@ -39,7 +69,7 @@ const UploadSection = () => {
             setSelectedFile(file);
             setActiveType("image");
           }}
-          disabled={activeType !==null && activeType!=="image"}
+          disabled={activeType !== null && activeType !== "image"}
           onRemove={resetAll}
         />
       </div>
@@ -47,7 +77,7 @@ const UploadSection = () => {
       <Textarea
         className="w-full min-h-35 rounded-md p-3 text-white/75"
         placeholder="Or paste your text here..."
-        disabled={activeType !==null && activeType!=="text"}
+        disabled={activeType !== null && activeType !== "text"}
         onChange={(e) => {
           setTextValue(e.target.value);
           setActiveType("text");
@@ -65,16 +95,18 @@ const UploadSection = () => {
           </Button>
         </div>
       )}
-
+      {error && <p className="text-center text-red-400 text-sm">{error}</p>}
       <Button
         className="block mx-auto border-2 border-black rounded-2xl mb-8 pb-7 text-cyan-200 font-semibold shadow-lg shadow-indigo-500/20 hover:cursor-pointer hover:[text-shadow:0_0_10px_rgba(255,255,255,0.5)] transition duration-300"
         disabled={
-           activeType===null ||
+          loading ||
+          activeType === null ||
           (activeType === "text" && !textValue.trim()) ||
           (activeType != "text" && !selectedFile)
         }
+        onClick={handleSubmit}
       >
-        Generate Study Material
+        {loading ? "Generating..." : "Generate Study Material"}
       </Button>
     </section>
   );
