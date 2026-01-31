@@ -29,6 +29,13 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
+# Reduce TensorFlow + HF log spam
+ENV TF_CPP_MIN_LOG_LEVEL=2 \
+    TOKENIZERS_PARALLELISM=false \
+    OMP_NUM_THREADS=4 \
+    MKL_NUM_THREADS=4
+
+
 # Minimal runtime libraries
 RUN apt-get update && apt-get install -y \
     libstdc++6 \

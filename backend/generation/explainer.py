@@ -1,5 +1,5 @@
 from llm.factory import get_llm_client
-llm_client = get_llm_client()
+
 
 def chunk_selector(chunks:list[str],keywords:list[str],max_chunk_lim:int=3)->list[str]:
     #check each chunk's contribution(density->contri/chunk len) for the keywords and take the top scores
@@ -57,7 +57,7 @@ Do not repeat headings or restart explanations.
     return prompt
 
 def generate_explanation(prompt:str)->str:
-
+    llm_client = get_llm_client()
     output=llm_client.generate(prompt)
     text= str(output)
     return text.strip()

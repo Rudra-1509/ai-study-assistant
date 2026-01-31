@@ -10,7 +10,13 @@ def get_llm_client():
     - local (default)
     - cloudflare
     """
+    global _llm_client
+    if _llm_client is not None:
+        return _llm_client 
     provider=os.getenv("LLM_PROVIDER","local").lower()
-    if provider=="cloudflare":
-        return CloudflareLLMClient()
-    return LocalLLMClient()
+    if provider == "cloudflare":
+        _llm_client = CloudflareLLMClient()
+    else:
+        _llm_client = LocalLLMClient()
+
+    return _llm_client
