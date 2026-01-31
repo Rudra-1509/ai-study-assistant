@@ -6,6 +6,7 @@ from typing import Optional
 
 from fastapi import FastAPI,Form,File,UploadFile,HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Response
 
 from ingestion.pdf_loader import load_pdf
 from ingestion.text_loader import load_text
@@ -19,10 +20,7 @@ app=FastAPI(title="AI Study Assistant",
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "https://noncontingent-hypodermically-shawana.ngrok-free.dev",
-        "https://ai-study-assistant-sand.vercel.app/",
+        "https://ai-study-assistant-sand.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -34,7 +32,7 @@ def health_check():
     return {"status":"ok"}
 
 @app.post("/analyze")
-def analyze(
+async def analyze(
     input_type: str=Form(...),
     content: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
@@ -49,7 +47,7 @@ def analyze(
         
         suffix=os.path.splitext(file.filename)[1]
         with tempfile.NamedTemporaryFile(delete=False,suffix=suffix) as tmp:
-            tmp.write(file.file.read())
+            tmp.write(await file.read())
             tmp_path=tmp.name
 
         file.file.close()
