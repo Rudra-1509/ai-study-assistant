@@ -24,7 +24,6 @@ app.add_middleware(
         "https://noncontingent-hypodermically-shawana.ngrok-free.dev",
         "https://ai-study-assistant-sand.vercel.app/",
     ],
-    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
