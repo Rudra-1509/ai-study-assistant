@@ -16,7 +16,6 @@ from controller import run as run_controller
 app=FastAPI(title="AI Study Assistant",
             description="Analyze text, PDFs, or images and generate study-friendly explanations.",
             version="1.0.0")
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
