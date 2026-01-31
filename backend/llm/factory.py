@@ -2,6 +2,8 @@ import os
 from llm.local import LocalLLMClient
 from llm.cloudfare import CloudflareLLMClient
 
+_llm_client = None
+
 def get_llm_client():
     """
     Returns an LLM client based on environment configuration.

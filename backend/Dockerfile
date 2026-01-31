@@ -5,17 +5,15 @@ FROM python:3.10-slim AS builder
 
 WORKDIR /app
 
-# System deps required for scientific Python
+# Build tools for Python wheels
 RUN apt-get update && apt-get install -y \
     build-essential \
     gcc \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy only requirements to leverage Docker cache
 COPY requirements.txt .
 
-# Build wheels (faster + deterministic)
 RUN pip install --upgrade pip \
     && pip wheel --no-cache-dir --no-deps \
        -r requirements.txt \
@@ -29,41 +27,37 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# Reduce TensorFlow + HF log spam
+# Reduce ML log noise
 ENV TF_CPP_MIN_LOG_LEVEL=2 \
     TOKENIZERS_PARALLELISM=false \
     OMP_NUM_THREADS=4 \
-    MKL_NUM_THREADS=4
+    MKL_NUM_THREADS=4 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
 
-
-# Minimal runtime libraries
+# REQUIRED SYSTEM DEPENDENCIES
 RUN apt-get update && apt-get install -y \
     libstdc++6 \
     curl \
+    tesseract-ocr \
+    libtesseract-dev \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy wheels from builder
+# Python deps
 COPY --from=builder /wheels /wheels
-
-# Install Python deps
 RUN pip install --no-cache /wheels/*
 
-# Copy backend source code
+# ✅ NLTK DATA (FIX)
+RUN python - <<EOF
+import nltk
+nltk.download('stopwords')
+nltk.download('punkt')
+EOF
+
+# App source
 COPY . .
 
-# Runtime optimizations
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    OMP_NUM_THREADS=4 \
-    MKL_NUM_THREADS=4 \
-    TOKENIZERS_PARALLELISM=false
-
-# API port
 EXPOSE 8000
 
-# -------- Choose ONE --------
-# FastAPI (recommended)
 CMD ["python", "-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
-
-# Plain Python alternative
-# CMD ["python", "app.py"]
