@@ -22,7 +22,10 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "https://noncontingent-hypodermically-shawana.ngrok-free.dev",
+        "https://*.vercel.app",
     ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
