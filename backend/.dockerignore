@@ -1,0 +1,55 @@
+# --------------------
+# Python cache
+# --------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --------------------
+# Virtual environments
+# --------------------
+venv/
+.venv/
+
+# --------------------
+# Git
+# --------------------
+.git/
+.gitignore
+
+# --------------------
+# Node / frontend
+# --------------------
+node_modules/
+frontend/
+public/
+assets/
+
+# --------------------
+# Tests & docs
+# --------------------
+tests/
+*.md
+
+# --------------------
+# Runtime data (mount later)
+# --------------------
+data/
+uploads/
+models/
+
+# --------------------
+# Env & OS
+# --------------------
+.env
+.DS_Store
+Thumbs.db
+
+# --------------------
+# Media (never bake)
+# --------------------
+*.pdf
+*.png
+*.jpg
+*.jpeg

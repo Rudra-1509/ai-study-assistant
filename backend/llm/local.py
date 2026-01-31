@@ -1,5 +1,5 @@
 from ctransformers import AutoModelForCausalLM
-from backend.llm.base import LLMClient
+from llm.base import LLMClient
 
 DEFAULT_MODEL_DIR = "models/mistral"
 DEFAULT_MODEL_FILE = "Mistral-7B-Instruct-v0.3.Q4_K_M.gguf"

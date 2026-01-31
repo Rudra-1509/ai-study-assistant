@@ -1,4 +1,4 @@
-from backend.llm.factory import get_llm_client
+from llm.factory import get_llm_client
 llm_client = get_llm_client()
 
 def chunk_selector(chunks:list[str],keywords:list[str],max_chunk_lim:int=3)->list[str]:
