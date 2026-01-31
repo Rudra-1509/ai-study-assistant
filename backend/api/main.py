@@ -33,34 +33,50 @@ def health_check():
 
 @app.post("/analyze")
 async def analyze(
-    input_type: str=Form(...),
+    input_type: str = Form(...),
     content: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
 ):
-    if input_type == "text":
-        if not content:
-            raise HTTPException(status_code=400,detail="Text content is missing")
-        text=load_text(content)
-    elif input_type in {"pdf","image"}:
-        if not file:
-            raise HTTPException(status_code=400,detail="File is missing")
-        
-        suffix=os.path.splitext(file.filename)[1]
-        with tempfile.NamedTemporaryFile(delete=False,suffix=suffix) as tmp:
-            tmp.write(await file.read())
-            tmp_path=tmp.name
+    try:
+        if input_type == "text":
+            if not content:
+                raise HTTPException(status_code=400, detail="Text content is missing")
+            text = load_text(content)
 
-        file.file.close()
+        elif input_type in {"pdf", "image"}:
+            if not file:
+                raise HTTPException(status_code=400, detail="File is missing")
 
-        try:
-            if input_type=="pdf":
-                text=load_pdf(tmp_path)
-            else:
-                text=load_img(tmp_path)
-        finally:
-            os.remove(tmp_path)
-    else:
-        raise HTTPException(status_code=400,detail="Invalid input_type.Must be one of: text,pdf,image")
-    
-    result=run_controller(text)
-    return result
+            suffix = os.path.splitext(file.filename)[1] or ".tmp"
+
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                tmp.write(await file.read())
+                tmp_path = tmp.name
+
+            try:
+                if input_type == "pdf":
+                    text = load_pdf(tmp_path)
+                else:
+                    text = load_img(tmp_path)
+            finally:
+                os.remove(tmp_path)
+
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid input_type. Must be one of: text, pdf, image"
+            )
+
+        result = run_controller(text)
+        return result
+
+    except HTTPException:
+        raise  
+
+    except Exception as e:
+
+        print("🔥 ANALYZE CRASH:", repr(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal error: {str(e)}"
+        )
