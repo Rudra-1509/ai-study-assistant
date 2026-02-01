@@ -6,7 +6,7 @@ from typing import Optional
 
 from fastapi import FastAPI,Form,File,UploadFile,HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import Response
+
 
 from ingestion.pdf_loader import load_pdf
 from ingestion.text_loader import load_text
@@ -20,7 +20,8 @@ app=FastAPI(title="AI Study Assistant",
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://ai-study-assistant-sand.vercel.app"
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
     ],
     allow_credentials=True,
     allow_methods=["*"],
