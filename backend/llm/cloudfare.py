@@ -22,16 +22,17 @@ class CloudflareLLMClient(LLMClient):
             "Content-type":"application/json"
         }
     
-    def generate(self,prompt:str)->str:
-        json={
-            "messages":[
-                {"role":"user","content":prompt}
+    def generate(self,prompt:str,max_tokens:int)->str:
+        json = {
+            "messages": [
+                {"role": "user", "content": prompt}
             ],
             "parameters": {
-                "temperature": 0.5,
+                "temperature": 0.7,
                 "top_p": 0.9,
-                "max_tokens": 400,
-                "repetation_penalty":1.1
+                "max_tokens": max_tokens,
+                "repetition_penalty": 1.1,
+                "stop":["</s>","[INST]","[/INST]","### END"]
             }
         }
 

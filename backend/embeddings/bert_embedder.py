@@ -1,3 +1,5 @@
+import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 tf.get_logger().setLevel("ERROR")
 
@@ -33,6 +35,5 @@ def embed_text(chunks: List[str]) -> List[tf.Tensor]:
         chunk_embedding = tf.math.l2_normalize(chunk_embedding, axis=1)
         embeddings.append(chunk_embedding[0])
     return embeddings
-
 
 
