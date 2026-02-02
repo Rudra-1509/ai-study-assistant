@@ -20,7 +20,7 @@ const Output = () => {
           </h1>
 
           {Object.entries(result).map(([id, topic]) => (
-            <div key={id} className="bg-zinc-800 rounded-xl p-4 space-y-3">
+            <div key={id} className="bg-zinc-800 rounded-xl p-4 space-y-3 mb-5">
               <h2 className="text-lg font-semibold text-white">
                 Topic {parseInt(id) + 1} ·{" "}
                 {topic.difficulty.charAt(0).toUpperCase() +
@@ -59,6 +59,7 @@ const Output = () => {
                   </ReactMarkdown>
                 </div>
               </div>
+              
             </div>
           ))}
         </div>

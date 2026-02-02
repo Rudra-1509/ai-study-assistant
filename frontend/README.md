@@ -1,73 +1,83 @@
-# React + TypeScript + Vite
+# 📚 AI Study Assistant – Learn Smarter with AI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## 🚀 Features
 
-Currently, two official plugins are available:
+- 📄 **PDF Upload** – Extracts and explains study content from PDFs  
+- 🖼️ **Image Upload** – OCR + explanation for handwritten or printed notes  
+- ✍️ **Text Input Mode** – Paste raw notes and get structured explanations  
+- 🧠 **Smart Chunking** – Large content is broken into meaningful chunks  
+- 🎯 **Keyword-Focused Selection** – Most relevant chunks are prioritized  
+- 📘 **Clean Study Output** – Explanations optimized for learning, not verbosity  
+- 🔒 **Input Locking UI** – Only one input mode active at a time (PDF / Image / Text)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🛠️ Tech Stack
 
-## React Compiler
+### Frontend
+- **React**
+- **Vite**
+- **Tailwind CSS**
+- **React Router**
 
-The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
+### Backend
+- **FastAPI**
+- **Python**
+- **LLM APIs** – HuggingFace Encoder & Decoder
+- **OCR** (for images)
+- **Custom chunking & scoring logic**
 
-## Expanding the ESLint configuration
+## 📦 How to Run Locally
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 1️⃣ Clone the Repository
+```bash
+git clone [https://github.com/your-username/ai-study-assistant.git](https://github.com/your-username/ai-study-assistant.git)
+cd ai-study-assistant
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### 2️⃣ Backend Setup
+cd backend
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python app.py
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+🔤 Install OCR (Required for Image Upload)
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+This project uses Tesseract OCR for extracting text from images.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Download and install Tesseract OCR for Windows
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Make sure Tesseract is added to your system PATH
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+After installation, restart your terminal
+
+(Do not worry about the exact version — any recent Tesseract OCR build will work.)
+
+### 3️⃣ Frontend Setup
+cd frontend
+npm install
+npm run dev
+
+Then open http://localhost:5173 in your browser 🚀
+
+## 🎥 Demo (Screen Recording)
+
+📽️ Watch the assistant in action:  
+📎 [Click here to view screen recording](#)  
+*(Add Drive / YouTube link)*
+
+## 🧩 Project Status
+
+✅ Core pipeline working
+
+✅ Frontend upload flow implemented
+
+⚠️ UI/UX polishing in progress
+
+🚧 Advanced study modes (Q&A, flashcards) planned
+
+🧑‍💻 Author
+
+Rudra Mondal
+AI / ML • Full-Stack • Learning-Driven Projects
+
+GitHub: [https://github.com/Rudra-1509](https://github.com/Rudra-1509)
+
