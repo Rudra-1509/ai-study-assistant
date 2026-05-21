@@ -20,7 +20,7 @@ const Output = () => {
           </h1>
 
           {Object.entries(result).map(([id, topic]) => (
-            <div key={id} className="bg-zinc-800 rounded-xl p-4 space-y-3 mb-5">
+            <div key={id} className="bg-zinc-900 rounded-xl p-4 space-y-3 mb-5">
               <h2 className="text-lg font-semibold text-white">
                 Topic {parseInt(id) + 1} ·{" "}
                 {topic.difficulty.charAt(0).toUpperCase() +
@@ -38,12 +38,12 @@ const Output = () => {
                 ))}
               </div>
 
-              <div className="text-zinc-300 whitespace-pre-wrap">
+              <div className="text-zinc-300">
                 <div className=" text-zinc-300 leading-relaxed">
                   <ReactMarkdown
                     components={{
                       h2: ({ children }) => (
-                        <h2 className="text-xl font-semibold text-white">
+                        <h2 className="text-xl font-semibold text-white mt-6 mb-2">
                           {children}
                         </h2>
                       ),
@@ -52,7 +52,7 @@ const Output = () => {
                           {children}
                         </strong>
                       ),
-                      p: ({ children }) => <p>{children}</p>,
+                      p: ({ children }) => <p className="my-3 leading-relaxed">{children}</p>,
                     }}
                   >
                     {topic.explanation}

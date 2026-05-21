@@ -28,10 +28,10 @@ class CloudflareLLMClient(LLMClient):
                 {"role": "user", "content": prompt}
             ],
             "parameters": {
-                "temperature": 0.7,
+                "temperature": 0.6,
                 "top_p": 0.9,
                 "max_tokens": max_tokens,
-                "repetition_penalty": 1.1,
+                "repetition_penalty": 1.2,
                 "stop":["</s>","[INST]","[/INST]","### END"]
             }
         }
