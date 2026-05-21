@@ -188,23 +188,30 @@ Please refer to the **`what-i-learned.md`** file for detailed reflections and le
 ```bash
 git clone https://github.com/your-username/ai-study-assistant.git
 cd ai-study-assistant
+```
 
+### 2️⃣ Backend Setup
+```bash
+pip install -r backend\requirements.txt
+python backend\app.py
+```
 
-2️⃣ Backend Setup
-cd backend
-python -m venv venv
-Windows: venv\Scripts\activate
-pip install -r requirements.txt
-python app.py
-
-3️⃣ Frontend Setup
+### 3️⃣ Frontend Setup
+```bash
 cd frontend
 npm install
 npm run dev
+```
 
+### ⚡ Quick Start (Recommended)
 
-Then open http://localhost:5173
- in your browser 🚀
+After installing the backend and frontend dependencies once, you can simply use the provided batch file to start both servers automatically.
+
+```bash
+startup.bat
+```
+
+Then open http://localhost:5173 in your browser 🚀
 
 🧩 Project Status
 
