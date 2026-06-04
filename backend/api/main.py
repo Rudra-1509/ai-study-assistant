@@ -2,21 +2,43 @@ from dotenv import load_dotenv
 load_dotenv()
 import tempfile
 import os
+import traceback
 from typing import Optional
+from contextlib import asynccontextmanager
+from llm.factory import get_llm_client
 
-from fastapi import FastAPI,Form,File,UploadFile,HTTPException
+from fastapi import FastAPI,Form,File,UploadFile,HTTPException,Request
 from fastapi.middleware.cors import CORSMiddleware
 
 
 from ingestion.pdf_loader import load_pdf
 from ingestion.text_loader import load_text
 from ingestion.img_loader import load_img
-
+from generation import explainer
 from controller import run as run_controller
 
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+
+    # 🔥 startup
+    explainer.init_semaphore(4)
+    app.state.llm_client = get_llm_client()
+    print("LLM client initialized")
+
+    yield  # app runs here
+
+    # 🛑 shutdown
+    await app.state.llm_client.close()
+    print("LLM client closed")
+    
 app=FastAPI(title="AI Study Assistant",
             description="Analyze text, PDFs, or images and generate study-friendly explanations.",
-            version="1.0.0")
+            version="1.0.0",
+            lifespan=lifespan)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -32,8 +54,10 @@ app.add_middleware(
 def health_check():
     return {"status":"ok"}
 
+
 @app.post("/analyze")
 async def analyze(
+    request: Request,
     input_type: str = Form(...),
     content: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
@@ -67,8 +91,8 @@ async def analyze(
                 status_code=400,
                 detail="Invalid input_type. Must be one of: text, pdf, image"
             )
-
-        result = run_controller(text)
+        llm_client = request.app.state.llm_client
+        result =await run_controller(text,llm_client)
         return result
 
     except HTTPException:
@@ -77,6 +101,8 @@ async def analyze(
     except Exception as e:
 
         print("🔥 ANALYZE CRASH:", repr(e))
+        traceback.print_exc()
+        
         raise HTTPException(
             status_code=500,
             detail=f"Internal error: {str(e)}"

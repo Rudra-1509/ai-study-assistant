@@ -3,6 +3,15 @@ import TitleBar from "@/components/TitleBar";
 import type { StudyResponse } from "@/types/study";
 import ReactMarkdown from "react-markdown";
 
+const cleanMarkdown = (text: string) => {
+  return text
+    .replace(/\r/g, "")
+    .replace(/\u2022/g, "-") // normalize bullet dots
+    .replace(/\*\s/g, "- ") // normalize weird bullets
+    .replace(/ +/g, " ") // remove extra spaces
+    .trim();
+};
+
 const Output = () => {
   const { state } = useLocation();
   const result = state?.result as StudyResponse | undefined;
@@ -47,19 +56,40 @@ const Output = () => {
                           {children}
                         </h2>
                       ),
+
+                      p: ({ children }) => (
+                        <p className="my-3 leading-relaxed text-zinc-300">
+                          {children}
+                        </p>
+                      ),
+
                       strong: ({ children }) => (
                         <strong className="font-bold text-white underline underline-offset-2 decoration-white/50">
                           {children}
                         </strong>
                       ),
-                      p: ({ children }) => <p className="my-3 leading-relaxed">{children}</p>,
+
+                      ul: ({ children }) => (
+                        <ul className="list-disc ml-6 my-2 space-y-1 text-zinc-300">
+                          {children}
+                        </ul>
+                      ),
+
+                      ol: ({ children }) => (
+                        <ol className="list-decimal ml-6 my-2 space-y-1 text-zinc-300">
+                          {children}
+                        </ol>
+                      ),
+
+                      li: ({ children }) => (
+                        <li className="leading-relaxed">{children}</li>
+                      ),
                     }}
                   >
-                    {topic.explanation}
+                    {cleanMarkdown(topic.explanation)}
                   </ReactMarkdown>
                 </div>
               </div>
-              
             </div>
           ))}
         </div>

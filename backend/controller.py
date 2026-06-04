@@ -5,7 +5,7 @@ from generation import explainer
 from evaluation import metrics,logger
 
 
-def run(input_text:str)->dict:
+async def run(input_text:str,llm_client)->dict:
     #1: preprocessing: clean and chunk
     prepro_text=cleaner.clean_text(input_text)
     chunks=chunker.chunk_text(prepro_text)
@@ -18,7 +18,7 @@ def run(input_text:str)->dict:
     topic_keywords=keyword_extractor.keyword_extractor(emb_labels,chunks,top_k=5)
     difficulty=difficulty_estimator.difficulty_estimator(topic_chunks,topic_keywords)
     #5. generate output
-    op=explainer.explain_all_topics(topic_chunks,topic_keywords,difficulty)
+    op=await explainer.explain_all_topics(topic_chunks,topic_keywords,difficulty,llm_client)
     #6. evaluation metrics
     evaluation=metrics.compute_metrics(op)
     logger.log_run(input_text,op,evaluation)

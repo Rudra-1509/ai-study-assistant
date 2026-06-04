@@ -1,24 +1,25 @@
 import os
-from llm.local import LocalLLMClient
-from llm.cloudfare import CloudflareLLMClient
 
 _llm_client = None
 
-def get_llm_client():
-    """
-    Returns an LLM client based on environment configuration.
 
-    Supported providers:
-    - local (default)
-    - cloudflare
-    """
+def get_llm_client():
     global _llm_client
+
     if _llm_client is not None:
-        return _llm_client 
-    provider=os.getenv("LLM_PROVIDER","local").lower()
+        return _llm_client
+
+    provider = os.getenv("LLM_PROVIDER", "cloudflare").lower()
+
     if provider == "cloudflare":
+        from llm.cloudfare import CloudflareLLMClient
         _llm_client = CloudflareLLMClient()
-    else:
+
+    elif provider == "local":
+        from llm.local import LocalLLMClient
         _llm_client = LocalLLMClient()
+
+    else:
+        raise ValueError(f"Unknown LLM provider: {provider}")
 
     return _llm_client

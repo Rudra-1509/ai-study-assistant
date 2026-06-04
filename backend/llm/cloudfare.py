@@ -1,6 +1,6 @@
 from llm.base import LLMClient
 import os
-import requests
+import httpx
 
 class CloudflareLLMClient(LLMClient):
     """
@@ -10,8 +10,9 @@ class CloudflareLLMClient(LLMClient):
     def __init__(self):
         self.api_token=os.getenv("CLOUDFLARE_API_TOKEN")
         self.account_id=os.getenv("CLOUDFLARE_ACCOUNT_ID")
-        self.model=os.getenv("CLOUDFLARE_MODEL","@cf/meta/llama-3-8b-instruct")
+        self.model=os.getenv("CLOUDFLARE_MODEL","@cf/meta/llama-3.1-8b-instruct-fp8")
 
+        self.client = httpx.AsyncClient(timeout=60)
         if not self.api_token or not self.account_id:
             raise ValueError("Cloudflare credentials are not set in environment variables")
         
@@ -22,8 +23,11 @@ class CloudflareLLMClient(LLMClient):
             "Content-type":"application/json"
         }
     
-    def generate(self,prompt:str,max_tokens:int)->str:
-        json = {
+    async def close(self):
+        await self.client.aclose()
+    
+    async def generate(self,prompt:str,max_tokens:int)->str:
+        payload = {
             "messages": [
                 {"role": "user", "content": prompt}
             ],
@@ -36,7 +40,11 @@ class CloudflareLLMClient(LLMClient):
             }
         }
 
-        response=requests.post(url=self.url,headers=self.headers,json=json,timeout=60)
+        response = await self.client.post(
+                url=self.url,
+                headers=self.headers,
+                json=payload
+            )
 
         response.raise_for_status()
         data=response.json()
