@@ -23,6 +23,7 @@ ENV PYTHONUNBUFFERED=1
 # For low-memory environments keep a single worker
 # Pre-download the SentenceTransformer model at image build time to avoid
 # large downloads and memory spikes during the first request at runtime.
+RUN python -c "import nltk; nltk.download('stopwords'); nltk.download('punkt')"
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
 
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "10000", "--workers", "1"]
