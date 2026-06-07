@@ -1,238 +1,274 @@
-# 📚 AI Study Assistant – Learn Smarter with AI
+# AI Study Assistant
 
-An AI-powered study assistant that helps you **understand, summarize, and revise study material** from PDFs, images, or raw text.  
-Built to bridge the gap between *dumping notes into an LLM* and actually getting **clear, structured explanations** you can study from.
+AI Study Assistant is a full-stack study-notes generator that turns pasted text, PDFs, or images into structured, revision-friendly explanations. It extracts source material, cleans and chunks it, groups chunks into topics, estimates difficulty, and asks an LLM to write focused Markdown study notes for each topic.
 
-This project focuses on **learning quality**, not just flashy output.
+The project is intentionally built as a learning pipeline instead of a simple “send everything to an LLM” wrapper. Each stage has a clear responsibility: ingestion, preprocessing, embeddings, topic grouping, keyword extraction, difficulty estimation, generation, and lightweight evaluation logging.
 
----
+## Features
 
-## 🎥 Demo (Screen Recording)
+- **Three input modes**: paste raw text, upload a PDF, or upload an image.
+- **PDF text extraction with OCR fallback**: readable PDF text is extracted directly, while low-text pages are rendered and passed through Tesseract OCR.
+- **Image OCR**: PNG/JPG/JPEG files are converted to grayscale and processed with Tesseract.
+- **Semantic chunking pipeline**: cleaned input is split into manageable chunks before embedding and clustering.
+- **Topic discovery**: chunks are embedded with SentenceTransformers and clustered with KMeans.
+- **Keyword extraction**: topic-level keywords are selected with stopword filtering and word-frequency ranking.
+- **Difficulty estimation**: each topic is labeled as `easy`, `medium`, or `hard` using keyword complexity, average chunk length, and topic breadth.
+- **Study-guide generation**: the backend generates topic outlines, section content, and conclusions using a pluggable LLM client.
+- **Frontend input locking**: users can only submit one active input type at a time.
+- **Markdown output rendering**: generated explanations are rendered as readable study notes in the browser.
+- **Run logging**: each analysis logs summary evaluation metrics to a JSONL log file.
 
-📽️ Watch the assistant in action:  
-📎 **[Click here to view screen recording](#)**  
-*(Add Drive / YouTube link)*
-
----
-
-## 🚀 Features
-
-- 📄 **PDF Upload** – Extracts and explains study content from PDFs  
-- 🖼️ **Image Upload** – OCR + explanation for handwritten or printed notes  
-- ✍️ **Text Input Mode** – Paste raw notes and get structured explanations  
-- 🧠 **Smart Chunking** – Large content is broken into meaningful chunks  
-- 🎯 **Keyword-Focused Selection** – Most relevant chunks are prioritized  
-- 📘 **Clean Study Output** – Explanations optimized for learning, not verbosity  
-- 🔒 **Input Locking UI** – Only one input mode active at a time (PDF / Image / Text)
-
----
-
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Frontend
-- **React**
-- **Vite**
-- **Tailwind CSS**
-- **React Router**
+
+- React 19
+- TypeScript
+- Vite
+- Tailwind CSS v4
+- React Router
+- React Markdown
+- shadcn-style UI primitives with Radix utilities
 
 ### Backend
-- **FastAPI**
-- **Python**
-- **LLM APIs** – HuggingFace Encoder & Decoder
-- **OCR** (for images)
-- **Custom chunking & scoring logic**
 
-### Dev & Deployment *(Discarded)*
-- **Docker**
-- **Vercel** (Frontend)
+- FastAPI
+- Python
+- Uvicorn
+- PyMuPDF (`fitz`) for PDF parsing
+- Tesseract OCR via `pytesseract`
+- SentenceTransformers (`all-MiniLM-L6-v2`) for embeddings
+- scikit-learn KMeans for topic clustering
+- NLTK stopwords for keyword extraction
+- Cloudflare Workers AI by default, with a local GGUF client option
+- Docker support for the backend
 
-📦 Project Root
-├── 📄 readme.md                  # Project overview and setup guide
-├── 📄 what-i-learned.md          # Development notes and lessons learned
-├── 📄 front---back.txt           # Project planning notes
-├── 📁 models/                    # Local model artifacts
-├── 📁 samples/                   # Example input files
-│
-├── 📁 backend/
-│   ├── 📄 app.py                 # Backend application entry point
-│   ├── 📄 controller.py          # Request routing and orchestration
-│   ├── 📄 requirements.txt       # Python dependencies
-│   ├── 📄 Dockerfile             # Docker configuration
-│   ├── 📄 docker-compose.yml     # Container orchestration setup
-│   │
-│   ├── 📁 api/
-│   │   └── 📄 main.py            # API route definitions
-│   │
-│   ├── 📁 embeddings/
-│   │   └── 📄 bert_embedder.py   # Embedding generation logic
-│   │
-│   ├── 📁 ingestion/             # Input loaders
-│   │   ├── 📄 text_loader.py
-│   │   ├── 📄 pdf_loader.py
-│   │   └── 📄 image_loader.py
-│   │
-│   ├── 📁 preprocessing/         # Cleaning and chunking logic
-│   │
-│   ├── 📁 understanding/         # Content understanding modules
-│   │   ├── 📄 topic_classifier.py
-│   │   ├── 📄 keyword_extractor.py
-│   │   └── 📄 difficulty_estimator.py
-│   │
-│   ├── 📁 generation/
-│   │   └── 📄 explainer.py       # Explanation generation logic
-│   │
-│   └── 📁 evaluation/            # Metrics and logging utilities
-│
-└── 📁 frontend/
-    ├── 📄 index.html             # Application shell
-    ├── 📄 package.json           # Frontend dependencies and scripts
-    ├── 📄 vite.config.ts         # Vite configuration
-    ├── 📄 tsconfig.json
-    ├── 📄 tsconfig.app.json
-    ├── 📄 tsconfig.node.json
-    ├── 📄 eslint.config.js       # Linting rules
-    ├── 📄 components.json        # Component metadata
-    │
-    └── 📁 src/
-        ├── 📄 main.tsx           # React app bootstrap
-        ├── 📄 App.tsx            # Root React component
-        │
-        ├── 📁 api/
-        │   └── 📄 analyze.ts     # API client for analysis requests
-        │
-        ├── 📁 hooks/
-        │   └── 📄 useAnalyze.ts  # Custom analysis hook
-        │
-        ├── 📁 components/        # UI components and layouts
-        │
-        ├── 📁 styles/
-        │   └── 📄 global.css     # Global styles
-        │
-        └── 📁 types/
-            └── 📄 study.ts       # Shared TypeScript definitions
+## Repository Structure
 
-## ☁️ Cloudflare AI Setup
+```text
+.
+├── readme.md                       # Main project documentation
+├── implementation.md               # Architecture and implementation details with Mermaid diagrams
+├── deployment-implementation.md    # Deployment notes
+├── samples/                        # Example PDF, image, and text inputs
+├── backend/
+│   ├── app.py                      # Uvicorn entry point
+│   ├── controller.py               # End-to-end backend pipeline orchestration
+│   ├── requirements.txt            # Python dependencies
+│   ├── Dockerfile                  # Backend container image
+│   ├── docker-compose.yml          # Backend compose setup
+│   ├── api/main.py                 # FastAPI app, CORS, lifespan, and /analyze endpoint
+│   ├── ingestion/                  # Text, PDF, and image loaders
+│   ├── preprocessing/              # Text cleaning and chunking
+│   ├── embeddings/                 # SentenceTransformer embedding layer
+│   ├── understanding/              # Clustering, keywords, and difficulty scoring
+│   ├── generation/                 # LLM prompt orchestration and post-processing
+│   ├── llm/                        # LLM abstraction, Cloudflare client, local client, factory
+│   └── evaluation/                 # Output metrics and run logging
+└── frontend/
+    ├── package.json                # Frontend dependencies and scripts
+    ├── vite.config.ts              # Vite configuration and path aliases
+    ├── index.html                  # HTML shell
+    └── src/
+        ├── main.tsx                # React bootstrap
+        ├── App.tsx                 # Router configuration
+        ├── pages/                  # Home and Output pages
+        ├── components/             # Upload UI, header, title bar, UI primitives
+        ├── api/                    # API client
+        ├── hooks/                  # Analysis hook
+        ├── types/                  # Shared frontend types
+        └── styles/                 # Global styles
+```
 
-This project uses **Cloudflare Workers AI** for LLM inference.
+## How It Works
 
-### 1️⃣ Get Cloudflare Credentials
+1. The user selects one input mode in the React UI: text, PDF, or image.
+2. The frontend sends a `multipart/form-data` request to `POST /analyze`.
+3. FastAPI validates the input and extracts text using the correct loader.
+4. The controller cleans and chunks the text.
+5. Chunks are embedded with `sentence-transformers/all-MiniLM-L6-v2`.
+6. KMeans groups chunks into one or more topic clusters.
+7. Keywords are extracted for each topic.
+8. A heuristic difficulty estimator labels each topic.
+9. The generation layer builds a topic outline, creates section-specific context, calls the LLM, deduplicates repeated facts, and adds a conclusion.
+10. Evaluation metrics are computed and logged.
+11. The frontend navigates to the output page and renders each topic as Markdown study notes.
 
-From your Cloudflare dashboard:
+For diagrams and deeper implementation notes, see [`implementation.md`](./implementation.md).
 
-- **Account ID**
-- **API Token** (with Workers AI permissions)
+## Prerequisites
 
-Generate the token from:  
-`Cloudflare Dashboard → My Profile → API Tokens`
+- Python 3.10+
+- Node.js 20+ recommended
+- npm
+- Tesseract OCR installed and available on your system `PATH`
+- Cloudflare Workers AI credentials, unless you switch to the local LLM provider
 
----
+### Installing Tesseract OCR
 
-### 2️⃣ Environment Variables (`.env`)
+Image upload and OCR fallback for scanned PDFs depend on Tesseract.
 
-Create a `.env` file inside your **backend** directory:
+- **Windows**: install a recent Tesseract build and add it to `PATH`.
+- **macOS**: `brew install tesseract`
+- **Linux/Debian/Ubuntu**: `sudo apt-get install tesseract-ocr`
+
+## Backend Setup
+
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+Create `backend/.env`:
 
 ```env
-# Cloudflare AI
+# LLM provider: cloudflare or local
+LLM_PROVIDER=cloudflare
+
+# Cloudflare Workers AI
 CLOUDFLARE_ACCOUNT_ID=your_account_id_here
 CLOUDFLARE_API_TOKEN=your_api_token_here
+CLOUDFLARE_MODEL=@cf/meta/llama-3.1-8b-instruct-fp8
 
-# Model Configuration
-CLOUDFLARE_MODEL=@cf/meta/llama-3-8b-instruct
-
-# App Settings
+# App settings
 ENV=development
-
-⚠️ **Important**
-
-- Never commit `.env` files to GitHub  
-- Add `.env` to your `.gitignore`
-
----
-
-### 3️⃣ Backend Usage Example
-
-The backend loads environment variables using **`python-dotenv`**:
-
-```python
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-
-ACCOUNT_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID")
-API_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN")
-MODEL = os.getenv("CLOUDFLARE_MODEL")
-
-## 🧠 How It Works (High Level)
-
-1. User uploads a **PDF / Image** or enters **Text**
-2. Content is:
-   - Extracted (PDF parsing / OCR if needed)
-   - Split into semantic chunks
-3. Chunks are **scored based on keyword density**
-4. Top-scoring chunks are selected
-5. The LLM generates **clear, study-friendly explanations**
-6. Output is formatted for **easy reading and revision**
-
----
-
-## 🎯 Why This Project Exists
-
-Please refer to the **`what-i-learned.md`** file for detailed reflections and lessons learned while building this project.
-
----
-
-## 📦 How to Run Locally
-
-### 1️⃣ Clone the Repository
-```bash
-git clone https://github.com/your-username/ai-study-assistant.git
-cd ai-study-assistant
 ```
 
-### 2️⃣ Backend Setup
+Run the backend:
+
 ```bash
-pip install -r backend\requirements.txt
-python backend\app.py
+cd backend
+python app.py
 ```
 
-### 3️⃣ Frontend Setup
+The API runs at `http://127.0.0.1:8000` by default.
+
+### Backend API
+
+#### `GET /health`
+
+Returns a simple health payload:
+
+```json
+{ "status": "ok" }
+```
+
+#### `POST /analyze`
+
+Consumes `multipart/form-data`.
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `input_type` | Yes | One of `text`, `pdf`, or `image`. |
+| `content` | Required for text | Raw text to analyze. |
+| `file` | Required for PDF/image | Uploaded PDF or image file. |
+
+Response shape:
+
+```json
+{
+  "0": {
+    "difficulty": "medium",
+    "keywords": ["revolution", "france", "assembly"],
+    "explanation": "## Section title\nGenerated study notes..."
+  }
+}
+```
+
+## Frontend Setup
+
 ```bash
 cd frontend
 npm install
+```
+
+Create `frontend/.env`:
+
+```env
+VITE_API_URL=http://127.0.0.1:8000
+```
+
+Run the frontend:
+
+```bash
+cd frontend
 npm run dev
 ```
 
-### ⚡ Quick Start (Recommended)
+Open `http://localhost:5173` in your browser.
 
-After installing the backend and frontend dependencies once, you can simply use the provided batch file to start both servers automatically.
+## Running Both Apps
+
+Use two terminals:
 
 ```bash
-startup.bat
+# Terminal 1
+cd backend
+source venv/bin/activate
+python app.py
 ```
 
-Then open http://localhost:5173 in your browser 🚀
+```bash
+# Terminal 2
+cd frontend
+npm run dev
+```
 
-🧩 Project Status
+## Docker Backend Option
 
-✅ Core pipeline working
+The backend includes Docker assets. From the `backend` directory:
 
-✅ Frontend upload flow implemented
+```bash
+cd backend
+docker compose up --build
+```
 
-⚠️ UI/UX polishing in progress
+Make sure required environment variables are available to the container.
 
-🚧 Advanced study modes (Q&A, flashcards) planned
+## Configuration Notes
 
-🧑‍💻 Author
+- The frontend reads the backend base URL from `VITE_API_URL`.
+- The backend allows CORS from `http://localhost:5173` and `http://127.0.0.1:5173`.
+- The default LLM provider is `cloudflare`.
+- The local provider expects a GGUF model under `models/mistral` with the configured file name.
+- `backend/evaluation/logger.py` writes run summaries to `run_logs.jsonl` relative to the process working directory.
+
+## Known Limitations
+
+- The text cleaner currently lowercases all source text, which can simplify matching but loses original capitalization.
+- Keyword extraction is frequency-based and may miss multi-word concepts.
+- Topic labels are numeric cluster IDs, not human-readable titles.
+- The local LLM client has a different method signature from the Cloudflare client, so the Cloudflare provider is the safer default for the current async generation path.
+- OCR quality depends on Tesseract installation, image clarity, and PDF scan quality.
+- Generated explanations depend on model behavior and should be reviewed before using as authoritative study material.
+
+## Development Scripts
+
+Frontend scripts:
+
+```bash
+cd frontend
+npm run dev      # Start Vite dev server
+npm run build    # Type-check and build production assets
+npm run lint     # Run ESLint
+npm run preview  # Preview production build
+```
+
+Backend startup:
+
+```bash
+cd backend
+python app.py
+```
+
+## Project Status
+
+Core text/PDF/image ingestion, backend topic pipeline, LLM generation, and frontend rendering are implemented. Future improvements could include flashcards, Q&A mode, source citations, better topic titles, richer evaluation, and a production deployment configuration.
+
+## Author
 
 Rudra Mondal
-AI / ML • Full-Stack • Learning-Driven Projects
 
-GitHub: https://github.com/Rudra-1509
-
-LinkedIn: (add if you want)
-
-⭐ A Note
-
-This isn’t a “perfect AI product”.
-It’s a learning-first project, built by struggling with real problems — and that’s exactly why it exists.
+- GitHub: <https://github.com/Rudra-1509>
