@@ -1,0 +1,53 @@
+# Virtual environments and Python
+venv
+*.venv
+env
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+dist
+build
+.Python
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Frontend (not needed in backend image)
+frontend
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Models and large data (if using Cloudflare API, not needed)
+models
+
+# Development and testing
+testing.py
+*.log
+.pytest_cache
+.coverage
+run_logs.jsonl
+
+# IDE and editor configs
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+.env
+.env.local
+
+# Documentation
+*.md
+readme.md
+deployment-implementation.md
+implementation.md
+what-i-learned.md
+
+# Other
+startup.bat
+front---back.txt
+samples
