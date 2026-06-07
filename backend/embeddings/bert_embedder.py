@@ -1,14 +1,14 @@
-from sentence_transformers import SentenceTransformer
 from typing import List
 
 # Lightweight embedding model (fast + production-safe)
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
-_model: SentenceTransformer | None = None
+_model = None
 
-def get_model() -> SentenceTransformer:
+def get_model():
     global _model
     if _model is None:
+        from sentence_transformers import SentenceTransformer
         _model = SentenceTransformer(MODEL_NAME)
     return _model
 

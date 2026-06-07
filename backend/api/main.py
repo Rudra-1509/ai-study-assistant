@@ -15,7 +15,6 @@ from ingestion.pdf_loader import load_pdf
 from ingestion.text_loader import load_text
 from ingestion.img_loader import load_img
 from generation import explainer
-from controller import run as run_controller
 
 
 
@@ -94,6 +93,7 @@ async def analyze(
         if request.app.state.llm_client is None:
             request.app.state.llm_client = get_llm_client()
         llm_client = request.app.state.llm_client
+        from controller import run as run_controller
         result = await run_controller(text, llm_client)
         return result
 
