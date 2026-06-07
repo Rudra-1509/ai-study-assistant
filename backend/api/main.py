@@ -63,6 +63,9 @@ async def analyze(
     file: Optional[UploadFile] = File(None),
 ):
     try:
+        print(f">> /analyze received: input_type={input_type}")
+        # ensure stdout is flushed quickly in container
+        # (PYTHONUNBUFFERED=1 is set in the Dockerfile)
         if input_type == "text":
             if not content:
                 raise HTTPException(status_code=400, detail="Text content is missing")
@@ -92,10 +95,20 @@ async def analyze(
                 detail="Invalid input_type. Must be one of: text, pdf, image"
             )
         if request.app.state.llm_client is None:
-            request.app.state.llm_client = get_llm_client()
+            try:
+                print(">> initializing LLM client")
+                request.app.state.llm_client = get_llm_client()
+                print(">> LLM client initialized")
+            except Exception as e:
+                print("🔥 LLM INIT ERROR:", repr(e))
+                traceback.print_exc()
+                raise HTTPException(status_code=500, detail=f"LLM init error: {str(e)}")
+
         llm_client = request.app.state.llm_client
         from controller import run as run_controller
+        print(">> calling controller.run")
         result = await run_controller(text, llm_client)
+        print(">> controller.run completed")
         return result
 
     except HTTPException:
