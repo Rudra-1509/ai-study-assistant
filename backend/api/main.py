@@ -23,15 +23,15 @@ from controller import run as run_controller
 async def lifespan(app: FastAPI):
 
     # 🔥 startup
-    explainer.init_semaphore(4)
-    app.state.llm_client = get_llm_client()
-    print("LLM client initialized")
+    explainer.init_semaphore(3)
+    app.state.llm_client = None  # ❌ don’t load yet
 
     yield  # app runs here
 
     # 🛑 shutdown
-    await app.state.llm_client.close()
-    print("LLM client closed")
+    if app.state.llm_client is not None:
+        await app.state.llm_client.close()
+        print("LLM client closed")
     
 app=FastAPI(title="AI Study Assistant",
             description="Analyze text, PDFs, or images and generate study-friendly explanations.",
@@ -91,8 +91,10 @@ async def analyze(
                 status_code=400,
                 detail="Invalid input_type. Must be one of: text, pdf, image"
             )
+        if request.app.state.llm_client is None:
+            request.app.state.llm_client = get_llm_client()
         llm_client = request.app.state.llm_client
-        result =await run_controller(text,llm_client)
+        result = await run_controller(text, llm_client)
         return result
 
     except HTTPException:
