@@ -55,6 +55,7 @@ The backend still performs local embedding computation through TensorFlow. For t
 If remote embeddings are used:
 - Remove TensorFlow and `sentence-transformers` from production requirements
 - Keep backend focused on text ingestion, OCR, chunking, and Cloudflare LLM calls
+- Set `EMBEDDING_PROVIDER=remote` and `HUGGINGFACE_API_TOKEN` to offload embedding generation to Hugging Face inference
 
 ## Practical Deployment Steps
 
