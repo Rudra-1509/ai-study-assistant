@@ -10,7 +10,10 @@ async def run(input_text:str,llm_client)->dict:
     prepro_text=cleaner.clean_text(input_text)
     chunks=chunker.chunk_text(prepro_text)
     #2. embed the chunks
+    print("Chunks:", len(chunks))
+    print("Before embeddings")
     chunks_embeddings=bert_embedder.embed_text(chunks)
+    print("After embeddings")
     #3. label and grouping
     emb_labels=topic_classifier.topic_classifer(chunks_embeddings)
     topic_chunks=keyword_extractor.group_by_labels(emb_labels,chunks)
