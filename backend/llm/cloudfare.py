@@ -48,5 +48,7 @@ class CloudflareLLMClient(LLMClient):
 
         response.raise_for_status()
         data=response.json()
-
-        return data["result"]["response"].strip()
+        return {
+        "text": data["result"]["response"].strip(),
+        "usage": data["result"]["usage"]
+        }

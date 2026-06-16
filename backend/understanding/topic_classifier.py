@@ -1,4 +1,5 @@
 from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
 import numpy as np
 def topic_classifer(chunk_embeddings:list[np.ndarray])->list[int]:
     if not isinstance(chunk_embeddings,list) or not chunk_embeddings:
@@ -18,6 +19,17 @@ def topic_classifer(chunk_embeddings:list[np.ndarray])->list[int]:
         k=5
 
     km=KMeans(n_clusters=k,init="k-means++",n_init=10,random_state=69)
-    labels=km.fit_predict(X)
+    labels = km.fit_predict(chunk_embeddings)
 
-    return labels.tolist()
+    unique_labels = len(set(labels))
+    n_samples = len(chunk_embeddings)
+
+    if 2 <= unique_labels <= n_samples - 1:
+        score = silhouette_score(
+            chunk_embeddings,
+            labels
+        )
+    else:
+        score = None
+
+    return labels.tolist(), score

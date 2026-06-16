@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import tempfile
 import os
+import time
 import traceback
 from typing import Optional
 from contextlib import asynccontextmanager
@@ -9,7 +10,7 @@ from llm.factory import get_llm_client
 
 from fastapi import FastAPI,Form,File,UploadFile,HTTPException,Request
 from fastapi.middleware.cors import CORSMiddleware
-
+from evaluation.benchmark import PipelineTimer
 
 from ingestion.pdf_loader import load_pdf
 from ingestion.text_loader import load_text
@@ -20,14 +21,11 @@ from generation import explainer
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-
-    # 🔥 startup
     explainer.init_semaphore(3)
-    app.state.llm_client = None  # ❌ don’t load yet
+    app.state.llm_client = None 
 
-    yield  # app runs here
-
-    # 🛑 shutdown
+    yield 
+    
     if app.state.llm_client is not None:
         await app.state.llm_client.close()
         print("LLM client closed")
@@ -63,37 +61,40 @@ async def analyze(
     file: Optional[UploadFile] = File(None),
 ):
     try:
-        print(f">> /analyze received: input_type={input_type}")
-        # ensure stdout is flushed quickly in container
-        # (PYTHONUNBUFFERED=1 is set in the Dockerfile)
-        if input_type == "text":
-            if not content:
-                raise HTTPException(status_code=400, detail="Text content is missing")
-            text = load_text(content)
+        timer=PipelineTimer()
+        start_time=time.perf_counter()
+        with timer.measure("ingestion"):
+            print(f">> /analyze received: input_type={input_type}")
+            # ensure stdout is flushed quickly in container
+            # (PYTHONUNBUFFERED=1 is set in the Dockerfile)
+            if input_type == "text":
+                if not content:
+                    raise HTTPException(status_code=400, detail="Text content is missing")
+                text = load_text(content)
 
-        elif input_type in {"pdf", "image"}:
-            if not file:
-                raise HTTPException(status_code=400, detail="File is missing")
+            elif input_type in {"pdf", "image"}:
+                if not file:
+                    raise HTTPException(status_code=400, detail="File is missing")
 
-            suffix = os.path.splitext(file.filename)[1] or ".tmp"
+                suffix = os.path.splitext(file.filename)[1] or ".tmp"
 
-            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-                tmp.write(await file.read())
-                tmp_path = tmp.name
+                with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                    tmp.write(await file.read())
+                    tmp_path = tmp.name
 
-            try:
-                if input_type == "pdf":
-                    text = load_pdf(tmp_path)
-                else:
-                    text = load_img(tmp_path)
-            finally:
-                os.remove(tmp_path)
+                try:
+                    if input_type == "pdf":
+                        text = load_pdf(tmp_path)
+                    else:
+                        text = load_img(tmp_path)
+                finally:
+                    os.remove(tmp_path)
 
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid input_type. Must be one of: text, pdf, image"
-            )
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid input_type. Must be one of: text, pdf, image"
+                )
         if request.app.state.llm_client is None:
             try:
                 print(">> initializing LLM client")
@@ -106,9 +107,7 @@ async def analyze(
 
         llm_client = request.app.state.llm_client
         from controller import run as run_controller
-        print(">> calling controller.run")
-        result = await run_controller(text, llm_client)
-        print(">> controller.run completed")
+        result = await run_controller(text, llm_client,timer=timer,start_time=start_time)
         return result
 
     except HTTPException:

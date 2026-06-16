@@ -68,7 +68,6 @@ def _encode_jina(chunks: List[str]) -> List[List[float]]:
             "model": JINA_EMBEDDING_MODEL
                    }
         response = requests.post(url, headers=headers, json=payload, timeout=60)
-        print("Jina status:", response.status_code)
         response.raise_for_status()
         data = response.json()
 

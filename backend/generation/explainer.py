@@ -8,7 +8,11 @@ from typing import Dict
 # =========================
 
 LLM_SEMAPHORE = None
-
+TOKEN_STATS = {
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0,
+}
 
 def init_semaphore(limit=4):
     global LLM_SEMAPHORE
@@ -19,12 +23,22 @@ async def safe_llm_generate(llm_client, prompt: str, max_tokens: int):
     if LLM_SEMAPHORE is None:
         raise RuntimeError("Semaphore not initialized")
     async with LLM_SEMAPHORE:
-        return await llm_client.generate(prompt, max_tokens=max_tokens)
+        result= await llm_client.generate(prompt, max_tokens=max_tokens)
+        TOKEN_STATS["prompt_tokens"] += result["usage"]["prompt_tokens"]
+        TOKEN_STATS["completion_tokens"] += result["usage"]["completion_tokens"]
+        TOKEN_STATS["total_tokens"] += result["usage"]["total_tokens"]
+
+        return result["text"]
 
 
 # =========================
 # UTILITIES
 # =========================
+
+def reset_token_stats():
+    TOKEN_STATS["prompt_tokens"] = 0
+    TOKEN_STATS["completion_tokens"] = 0
+    TOKEN_STATS["total_tokens"] = 0
 
 def chunk_kw_score(chunk: str, keywords: list[str]) -> float:
     if not chunk.strip():
@@ -372,8 +386,6 @@ Context:
 # CONTEXT SELECTION
 # =========================
 
-# [CHANGE 2] Semantic hint table.
-#
 # Maps sets of header trigger words → bonus content words to count in chunks.
 # Catches cases where the header ("Achievements and Honours") has no direct
 # lexical overlap with the most relevant chunk ("Ballon d'Or", "Golden Shoe").
