@@ -120,6 +120,12 @@ curl -X POST http://127.0.0.1:8000/analyze \
   -F content="Your study material here"
 ```
 
+### Benchmark Validation
+
+- Use `run_benchmark.bat` to launch the backend and execute `backend/benchmark_runner.py` against the sample datasets.
+- The benchmark runner stores detailed results in `backend/benchmark_results.csv`, including success status, end-to-end latency, token usage, readability and clustering scores, and per-stage timing.
+- This validation step proves the backend handles text, PDF, and image inputs successfully before deployment.
+
 ## Troubleshooting
 
 ### Text/PDF requests fail or timeout

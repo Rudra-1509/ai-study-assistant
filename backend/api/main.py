@@ -105,9 +105,16 @@ async def analyze(
                 traceback.print_exc()
                 raise HTTPException(status_code=500, detail=f"LLM init error: {str(e)}")
 
+        benchmark_mode = request.headers.get("x-benchmark", "false").lower() in {"1", "true", "yes"}
         llm_client = request.app.state.llm_client
         from controller import run as run_controller
-        result = await run_controller(text, llm_client,timer=timer,start_time=start_time)
+        result = await run_controller(
+            text,
+            llm_client,
+            timer=timer,
+            start_time=start_time,
+            include_metrics=benchmark_mode,
+        )
         return result
 
     except HTTPException:

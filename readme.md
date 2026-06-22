@@ -25,6 +25,7 @@ The project is intentionally built as a learning pipeline instead of a simple â€
 - **Frontend input locking**: users can only submit one active input type at a time.
 - **Markdown output rendering**: generated explanations are rendered as readable study notes in the browser.
 - **Run logging**: each analysis logs summary evaluation metrics (keyword coverage, word count validation) to a JSONL log file.
+- **Benchmark runner**: `backend/benchmark_runner.py` and `run_benchmark.bat` collect end-to-end performance metrics for text, PDF, and image inputs and write detailed results to `backend/benchmark_results.csv`.
 - **Cloud-native architecture**: uses Jina for embeddings and Cloudflare Workers AI for LLM inferenceâ€”no heavy ML libraries required locally.
 
 ## Tech Stack
@@ -177,6 +178,12 @@ python app.py
 ```
 
 The API runs at `http://127.0.0.1:8000` by default.
+
+## Benchmarking
+
+- Start the backend locally and run `.un_benchmark.bat` from the repository root.
+- The benchmark harness sends sample text, PDF, and image inputs to `http://127.0.0.1:8000/analyze` and records per-file latency, token usage, cluster/readability metrics, and pipeline stage timings.
+- Results are written to `backend/benchmark_results.csv` and can be used to validate pipeline performance before deployment.
 
 ### Backend API
 

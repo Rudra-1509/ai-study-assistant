@@ -7,7 +7,7 @@ from evaluation.benchmark import PipelineTimer
 import textstat
 import time
 
-async def run(input_text:str,llm_client,timer:PipelineTimer,start_time:float)->dict:
+async def run(input_text:str,llm_client,timer:PipelineTimer,start_time:float, include_metrics: bool=False)->dict:
     #1: preprocessing: clean and chunk
     with timer.measure("preprocessing"):
         prepro_text=cleaner.clean_text(input_text)
@@ -27,7 +27,7 @@ async def run(input_text:str,llm_client,timer:PipelineTimer,start_time:float)->d
     with timer.measure("difficulty estimation"):
         difficulty=difficulty_estimator.difficulty_estimator(topic_chunks,topic_keywords)
     #5. generate output
-    with timer.measure("output genration"):
+    with timer.measure("output generation"):
         explainer.reset_token_stats()
         op=await explainer.explain_all_topics(topic_chunks,topic_keywords,difficulty,llm_client)
         
@@ -39,6 +39,23 @@ async def run(input_text:str,llm_client,timer:PipelineTimer,start_time:float)->d
     combined_op_text = "\n\n".join(topic["explanation"] for topic in op.values())
     output_flesch = textstat.flesch_reading_ease(combined_op_text)
     logger.log_run(input_text,op,evaluation,silhouette,input_flesch,output_flesch,timer.results,total_pipeline,explainer.TOKEN_STATS)
+
+    if include_metrics:
+        return {
+            "topics": op,
+            "benchmark_metrics": {
+                "num_topics": len(op),
+                "metrics_summary": evaluation.get("summary", {}),
+                "silhouette_score": silhouette,
+                "input_flesch": input_flesch,
+                "output_flesch": output_flesch,
+                "readability_improvement": output_flesch - input_flesch,
+                "timings": timer.results,
+                "token_usage": explainer.TOKEN_STATS,
+                "total_pipeline": total_pipeline,
+            },
+        }
+
     return op
 
 

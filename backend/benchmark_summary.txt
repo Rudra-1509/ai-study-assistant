@@ -1,0 +1,79 @@
+AI Study Assistant Benchmark Summary
+============================================================
+Benchmark Date          : 2026-06-22 11:53:14
+Target URL              : http://127.0.0.1:8000/analyze
+Dataset dir             : C:\Users\RUDRANIL MONDAL\Documents\AIML\Projects\ai-study-assistant\datasets
+Files tested            : 30
+Passed                  : 30
+Failed                  : 0
+Success rate            : 100.00%
+Total benchmark time    : 1638.845 sec
+
+Latency Statistics
+------------------------------------------------------------
+Average latency         : 54.615 sec
+Latency std dev         : 26.440 sec
+Median latency          : 52.114 sec
+Min latency             : 16.437 sec
+Max latency             : 119.190 sec
+
+Aggregate Metric Statistics
+------------------------------------------------------------
+Average pipeline time   : 54.561 sec
+Average word count      : 1279.600
+Average num topics      : 3.033
+Average prompt tokens   : 16168.333
+Average completion toks : 2224.533
+Average total tokens    : 18392.867
+Avg readability improve : -10.267
+Average silhouette      : 0.132
+
+Fastest / Slowest Files
+------------------------------------------------------------
+Fastest file            : MacronutrientsVsMicronutrientsjpg.jpg (IMG, 16.437 sec)
+Slowest file            : Hamlet.pdf (PDF, 119.190 sec)
+
+Breakdown by Dataset Type
+------------------------------------------------------------
+IMG
+  Files                 : 10
+  Success               : 10/10 (100.00%)
+  Avg latency           : 39.957 sec
+  Avg pipeline time     : 39.923 sec
+  Avg total tokens      : 7924.700
+  Avg readability gain  : -15.586
+  Avg word count        : 595.900
+  Avg num topics        : 1.700
+
+PDF
+  Files                 : 10
+  Success               : 10/10 (100.00%)
+  Avg latency           : 65.005 sec
+  Avg pipeline time     : 64.914 sec
+  Avg total tokens      : 24711.400
+  Avg readability gain  : -7.323
+  Avg word count        : 1599.700
+  Avg num topics        : 3.900
+
+TXT
+  Files                 : 10
+  Success               : 10/10 (100.00%)
+  Avg latency           : 58.885 sec
+  Avg pipeline time     : 58.845 sec
+  Avg total tokens      : 22542.500
+  Avg readability gain  : -7.892
+  Avg word count        : 1643.200
+  Avg num topics        : 3.500
+
+Average Pipeline Timings
+------------------------------------------------------------
+timing_ingestion              0.947 sec
+timing_preprocessing          0.001 sec
+timing_embedding              3.638 sec
+timing_clustering             0.095 sec
+timing_grouping               0.000 sec
+timing_keyword extraction     0.003 sec
+timing_difficulty estimation  0.000 sec
+timing_output generation      49.833 sec
+
+Detailed results are available in the CSV file.

@@ -76,6 +76,10 @@ Focused on describing behavior, not just output format
 
 This phase taught me that prompt design is closer to system design than copywriting.
 
+9. Benchmarking for Confidence
+
+Once the pipeline was stable, I added a benchmark runner to prove it. `backend/benchmark_runner.py` and `run_benchmark.bat` measure end-to-end latency, token usage, clustering/readability metrics, and success across text, PDF, and image inputs. Those results are saved in `backend/benchmark_results.csv`, which made it much easier to confirm the system works consistently instead of relying on a few ad hoc tests.
+
 8. Realizing What I Actually Built
 
 At some point, it hit me:
