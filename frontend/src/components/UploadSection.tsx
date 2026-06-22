@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { UploadCard } from "./UploadCard";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import useAnalyze from "@/hooks/useAnalyze";
+import type { StudyInput } from "@/types/study";
 
 const progressStages = [
   "Preparing your document",
@@ -21,8 +22,10 @@ const UploadSection = () => {
   const [activeType, setActiveType] = useState<"pdf" | "image" | "text" | null>(null);
   const [textValue, setTextValue] = useState("");
   const [progressStep, setProgressStep] = useState(0);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [lastInput, setLastInput] = useState<StudyInput | null>(null);
 
-  const { loading, error, runAnalyze } = useAnalyze();
+  const { loading, error, runAnalyze, cancelAnalyze } = useAnalyze();
 
   useEffect(() => {
     if (!loading) {
@@ -30,42 +33,49 @@ const UploadSection = () => {
     }
 
     const interval = window.setInterval(() => {
-      setProgressStep((current) => Math.min(current + 1, progressStages.length - 1));
+      setProgressStep((current) => Math.min(current + 1, progressStages.length - 2));
     }, 1200);
 
     return () => window.clearInterval(interval);
   }, [loading]);
 
-  const handleSubmit = async () => {
-    if (!activeType) return;
+    const buildInput = () => {
+    if (activeType === "image" && selectedFile) return { input_type: "image" as const, file: selectedFile };
+    if (activeType === "pdf" && selectedFile) return { input_type: "pdf" as const, file: selectedFile };
+    if (activeType === "text" && textValue.trim()) return { input_type: "text" as const, content: textValue.trim() };
+    return null;
+  };
+
+    const handleSubmit = async (input = buildInput()) => {
+    if (!input) return;
     setProgressStep(0);
-    try{
-          let result;
-
-    if (activeType === "image" && selectedFile) {
-      result = await runAnalyze({
-        input_type: "image",
-        file: selectedFile,
-      });
-    } else if (activeType === "pdf" && selectedFile) {
-      result = await runAnalyze({
-        input_type: "pdf",
-        file: selectedFile,
-      });
-    } else if (activeType === "text" && textValue.trim()) {
-      result = await runAnalyze({
-        input_type: "text",
-        content: textValue,
-      });
-    }
-
-    if (result) {
+    setLastInput(input);
+    try {
+      const result = await runAnalyze(input);
+      setProgressStep(progressStages.length - 1);
       navigate("/output", { state: { result: result.result, duration: result.duration } });
+    } catch (err) {
+      console.warn(err);
     }
-    }
-    catch(err){
-      console.log(err);
-    }
+  };
+
+    const handleGenerateClick = () => {
+    void handleSubmit();
+    };
+
+    const validateFile = (type: "pdf" | "image", file: File) => {
+    const isValidType = type === "pdf" ? file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf") : file.type.startsWith("image/");
+    if (!isValidType) return `Please choose a valid ${type === "pdf" ? "PDF" : "image"} file.`;
+    if (file.size > 15 * 1024 * 1024) return "Files must be smaller than 15 MB for reliable processing.";
+    return null;
+  };
+
+  const handleFileSelect = (type: "pdf" | "image", file: File) => {
+    const validation = validateFile(type, file);
+    setFileError(validation);
+    if (validation) return;
+    setSelectedFile(file);
+    setActiveType(type);
   };
 
   const resetAll = () => {
@@ -73,11 +83,13 @@ const UploadSection = () => {
     setActiveType(null);
     setTextValue("");
     setProgressStep(0);
+    setFileError(null);
   };
 
-  const progressPercent = Math.round(
-    (progressStep / Math.max(progressStages.length - 1, 1)) * 100,
-  );
+    const progressPercent = useMemo(() => {
+    if (!loading && progressStep === progressStages.length - 1) return 100;
+    return Math.min(92, Math.round(((progressStep + 1) / progressStages.length) * 100));
+  }, [loading, progressStep]);
 
   const selectedLabel =
     activeType === "text"
@@ -87,7 +99,7 @@ const UploadSection = () => {
       : "No document selected yet";
 
   return (
-    <section className="space-y-6">
+    <section id="upload" className="space-y-6" aria-labelledby="upload-heading">
       <Card className="bg-zinc-900/95 border border-white/10 shadow-xl shadow-cyan-500/10">
         <CardHeader>
           <CardTitle className="text-white text-2xl tracking-tight">
@@ -104,10 +116,8 @@ const UploadSection = () => {
               imgSrc="/pdf-upload.png"
               type="pdf"
               isActive={activeType === "pdf"}
-              onFileSelect={(file) => {
-                setSelectedFile(file);
-                setActiveType("pdf");
-              }}
+              error={activeType === "pdf" ? fileError : null}
+              onFileSelect={(file) => handleFileSelect("pdf", file)}
               disabled={activeType !== null && activeType !== "pdf"}
               onRemove={resetAll}
             />
@@ -115,10 +125,8 @@ const UploadSection = () => {
               imgSrc="img-upload.png"
               type="image"
               isActive={activeType === "image"}
-              onFileSelect={(file) => {
-                setSelectedFile(file);
-                setActiveType("image");
-              }}
+              error={activeType === "image" ? fileError : null}
+              onFileSelect={(file) => handleFileSelect("image", file)}
               disabled={activeType !== null && activeType !== "image"}
               onRemove={resetAll}
             />
@@ -155,19 +163,19 @@ const UploadSection = () => {
                 <span className="font-medium">Analyzing document</span>
                 <span>{progressPercent}%</span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-white/10">
+              <div className="h-2 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100}>
                 <div
                   className="h-full rounded-full bg-cyan-400 transition-all duration-500"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
               <p className="mt-3 text-sm text-slate-200">
-                {progressStages[progressStep]}
+                {loading && progressStep === progressStages.length - 2 ? "Finalizing results from the backend" : progressStages[progressStep]}
               </p>
             </div>
           )}
 
-          {error && <p className="text-center text-red-400 text-sm">{error}</p>}
+          {error && <div className="rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-center text-sm text-red-200" role="alert">{error}</div>}
         </CardContent>
 
         <CardFooter className="flex flex-col items-center gap-4 pt-4">
@@ -179,10 +187,12 @@ const UploadSection = () => {
               (activeType === "text" && !textValue.trim()) ||
               (activeType !== "text" && !selectedFile)
             }
-            onClick={handleSubmit}
+            onClick={handleGenerateClick}
           >
             {loading ? "Analyzing content..." : "Generate Study Material"}
           </Button>
+           {loading && <Button variant="ghost" className="text-slate-200" onClick={cancelAnalyze}>Cancel analysis</Button>}
+          {!loading && error && lastInput && <Button variant="secondary" onClick={() => handleSubmit(lastInput)}>Retry last upload</Button>}
           <p className="text-center text-sm text-slate-400 max-w-xl">
             Once analysis completes, you can review topic summaries, difficulty levels, and export your notes as Markdown or PDF.
           </p>

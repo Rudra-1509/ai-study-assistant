@@ -1,21 +1,13 @@
 import { useNavigate } from "react-router-dom";
 
 const TitleBar = () => {
-  const navigate=useNavigate();
+  const navigate = useNavigate();
   return (
-    <div className="flex items-center gap-40">
-      <img
-        src="/logo.png"
-        alt="MakeMeStudy logo"
-        className="w-30 md:w-36 object-contain cursor-pointer"
-        onClick={() => navigate("/")}
-      />
-      <h1
-        className="text-2xl text-cyan-100 font-semibold cursor-pointer hover:[text-shadow:0_0_10px_rgba(255,255,255,0.5)] transition duration-300"
-        onClick={() => navigate("/")}
-      >
-        MakeMeStudy
-      </h1>
+        <div className="flex items-center justify-between gap-4">
+      <button className="flex items-center gap-3 rounded-full focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-cyan-300/60" onClick={() => navigate("/")} aria-label="Go to MakeMeStudy home">
+        <img src="/logo.png" alt="" className="w-24 object-contain sm:w-30 cursor-pointer" />
+        <span className="text-xl font-bold tracking-tight text-cyan-100 sm:text-2xl cursor-pointer">MakeMeStudy</span>
+      </button>
     </div>
   );
 };

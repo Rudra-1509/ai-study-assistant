@@ -3,14 +3,12 @@ import UploadSection from "@/components/UploadSection";
 
 const Home = () => {
   return (
-    <>
-      <div className="min-h-screen flex justify-center">
-        <div className="w-full max-w-3xl bg-linear-to-b from-zinc-800 to-zinc-700 px-4 pt-6 space-y-10">
-          <Header />
-          <UploadSection/>
-        </div>
-      </div>
-    </>
+        <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.20),transparent_35%),linear-gradient(135deg,#0f172a,#27272a_55%,#111827)] px-4 py-6 sm:py-10">
+      <main className="mx-auto w-full max-w-5xl space-y-8">
+        <Header />
+        <UploadSection />
+      </main>
+    </div>
   );
 };
 
