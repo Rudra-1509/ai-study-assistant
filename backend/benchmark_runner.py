@@ -67,6 +67,16 @@ def maybe_round(value, digits=4):
     return value
 
 
+def format_path_for_output(path: Path, base: Path = BASE_DIR):
+    path_obj = Path(path)
+    if not path_obj.is_absolute():
+        return str(path_obj)
+    try:
+        return str(path_obj.resolve().relative_to(base.resolve()))
+    except Exception:
+        return path_obj.name
+
+
 def benchmark_text(file_path: Path, url: str):
     with file_path.open("r", encoding="utf-8", errors="ignore") as f:
         content = f.read()
@@ -243,14 +253,14 @@ def run_benchmark(url: str):
     files = collect_files()
 
     if not files:
-        raise RuntimeError(f"No dataset files found in {DATASET_DIR}")
+        raise RuntimeError(f"No dataset files found in {format_path_for_output(DATASET_DIR)}")
 
     benchmark_start = time.perf_counter()
 
     print("=" * 70)
     print("AI Study Assistant Benchmark")
     print(f"Target URL : {url}")
-    print(f"Dataset dir: {DATASET_DIR}")
+    print(f"Dataset dir: {format_path_for_output(DATASET_DIR)}")
     print(f"Files found: {len(files)}")
     print("=" * 70)
 
@@ -401,7 +411,7 @@ def write_summary(results, summary_path: Path, benchmark_total_time: float, targ
         f.write("=" * 60 + "\n")
         f.write(f"Benchmark Date          : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write(f"Target URL              : {target_url}\n")
-        f.write(f"Dataset dir             : {DATASET_DIR}\n")
+        f.write(f"Dataset dir             : {format_path_for_output(DATASET_DIR)}\n")
         f.write(f"Files tested            : {total}\n")
         f.write(f"Passed                  : {passed}\n")
         f.write(f"Failed                  : {failed}\n")
@@ -526,8 +536,8 @@ def main():
 
         print("\n" + "=" * 70)
         print("Benchmark finished")
-        print(f"CSV report written to    : {args.output_csv}")
-        print(f"Summary report written to: {args.summary}")
+        print(f"CSV report written to    : {format_path_for_output(args.output_csv)}")
+        print(f"Summary report written to: {format_path_for_output(args.summary)}")
         print("-" * 70)
         print(f"Passed            : {passed}/{total}")
         print(f"Average Latency   : {format_metric(avg_latency, suffix=' sec')}")

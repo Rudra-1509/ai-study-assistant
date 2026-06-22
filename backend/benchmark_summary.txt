@@ -2,7 +2,7 @@ AI Study Assistant Benchmark Summary
 ============================================================
 Benchmark Date          : 2026-06-22 11:53:14
 Target URL              : http://127.0.0.1:8000/analyze
-Dataset dir             : C:\Users\RUDRANIL MONDAL\Documents\AIML\Projects\ai-study-assistant\datasets
+Dataset dir             : datasets
 Files tested            : 30
 Passed                  : 30
 Failed                  : 0
