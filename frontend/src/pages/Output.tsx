@@ -276,6 +276,7 @@ ${cleanMarkdown(topic.explanation)}`;
                     <Button
                       variant="secondary"
                       size="sm"
+                      className="bg-white text-black hover:bg-gray-100 border border-gray-300 cursor-pointer"
                       onClick={() => copyTopic(id, topicText)}
                     >
                       {copiedId === id ? (
