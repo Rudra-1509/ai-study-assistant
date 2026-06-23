@@ -3,7 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { UploadCard } from "./UploadCard";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import useAnalyze from "@/hooks/useAnalyze";
 import type { StudyInput } from "@/types/study";
 
@@ -19,7 +26,9 @@ const progressStages = [
 const UploadSection = () => {
   const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [activeType, setActiveType] = useState<"pdf" | "image" | "text" | null>(null);
+  const [activeType, setActiveType] = useState<"pdf" | "image" | "text" | null>(
+    null,
+  );
   const [textValue, setTextValue] = useState("");
   const [progressStep, setProgressStep] = useState(0);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -33,40 +42,53 @@ const UploadSection = () => {
     }
 
     const interval = window.setInterval(() => {
-      setProgressStep((current) => Math.min(current + 1, progressStages.length - 2));
+      setProgressStep((current) =>
+        Math.min(current + 1, progressStages.length - 2),
+      );
     }, 1200);
 
     return () => window.clearInterval(interval);
   }, [loading]);
 
-    const buildInput = () => {
-    if (activeType === "image" && selectedFile) return { input_type: "image" as const, file: selectedFile };
-    if (activeType === "pdf" && selectedFile) return { input_type: "pdf" as const, file: selectedFile };
-    if (activeType === "text" && textValue.trim()) return { input_type: "text" as const, content: textValue.trim() };
+  const buildInput = () => {
+    if (activeType === "image" && selectedFile)
+      return { input_type: "image" as const, file: selectedFile };
+    if (activeType === "pdf" && selectedFile)
+      return { input_type: "pdf" as const, file: selectedFile };
+    if (activeType === "text" && textValue.trim())
+      return { input_type: "text" as const, content: textValue.trim() };
     return null;
   };
 
-    const handleSubmit = async (input = buildInput()) => {
+  const handleSubmit = async (input = buildInput()) => {
     if (!input) return;
     setProgressStep(0);
     setLastInput(input);
     try {
       const result = await runAnalyze(input);
       setProgressStep(progressStages.length - 1);
-      navigate("/output", { state: { result: result.result, duration: result.duration } });
+      navigate("/output", {
+        state: { result: result.result, duration: result.duration },
+      });
     } catch (err) {
       console.warn(err);
     }
   };
 
-    const handleGenerateClick = () => {
+  const handleGenerateClick = () => {
     void handleSubmit();
-    };
+  };
 
-    const validateFile = (type: "pdf" | "image", file: File) => {
-    const isValidType = type === "pdf" ? file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf") : file.type.startsWith("image/");
-    if (!isValidType) return `Please choose a valid ${type === "pdf" ? "PDF" : "image"} file.`;
-    if (file.size > 15 * 1024 * 1024) return "Files must be smaller than 15 MB for reliable processing.";
+  const validateFile = (type: "pdf" | "image", file: File) => {
+    const isValidType =
+      type === "pdf"
+        ? file.type === "application/pdf" ||
+          file.name.toLowerCase().endsWith(".pdf")
+        : file.type.startsWith("image/");
+    if (!isValidType)
+      return `Please choose a valid ${type === "pdf" ? "PDF" : "image"} file.`;
+    if (file.size > 15 * 1024 * 1024)
+      return "Files must be smaller than 15 MB for reliable processing.";
     return null;
   };
 
@@ -86,17 +108,20 @@ const UploadSection = () => {
     setFileError(null);
   };
 
-    const progressPercent = useMemo(() => {
+  const progressPercent = useMemo(() => {
     if (!loading && progressStep === progressStages.length - 1) return 100;
-    return Math.min(92, Math.round(((progressStep + 1) / progressStages.length) * 100));
+    return Math.min(
+      92,
+      Math.round(((progressStep + 1) / progressStages.length) * 100),
+    );
   }, [loading, progressStep]);
 
   const selectedLabel =
     activeType === "text"
       ? `${textValue.trim().length} characters ready`
       : selectedFile
-      ? `${selectedFile.name} selected`
-      : "No document selected yet";
+        ? `${selectedFile.name} selected`
+        : "No document selected yet";
 
   return (
     <section id="upload" className="space-y-6" aria-labelledby="upload-heading">
@@ -106,7 +131,9 @@ const UploadSection = () => {
             Create a polished study summary
           </CardTitle>
           <CardDescription className="text-slate-300 leading-relaxed">
-            Upload a PDF or image, or paste your text, then let the assistant analyze it through OCR, chunking, embeddings, clustering, and generation.
+            Upload a PDF or image, or paste your text, then let the assistant
+            analyze it through OCR, chunking, embeddings, clustering, and
+            generation.
           </CardDescription>
         </CardHeader>
 
@@ -163,24 +190,47 @@ const UploadSection = () => {
                 <span className="font-medium">Analyzing document</span>
                 <span>{progressPercent}%</span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100}>
+              <div
+                className="h-2 overflow-hidden rounded-full bg-white/10"
+                role="progressbar"
+                aria-valuenow={progressPercent}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
                 <div
                   className="h-full rounded-full bg-cyan-400 transition-all duration-500"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
               <p className="mt-3 text-sm text-slate-200">
-                {loading && progressStep === progressStages.length - 2 ? "Finalizing results from the backend" : progressStages[progressStep]}
+                {loading && progressStep === progressStages.length - 2
+                  ? "Finalizing results from the backend"
+                  : progressStages[progressStep]}
               </p>
             </div>
           )}
 
-          {error && <div className="rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-center text-sm text-red-200" role="alert">{error}</div>}
+          {error && (
+            <div
+              className="rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-center text-sm text-red-200"
+              role="alert"
+            >
+              {error}
+            </div>
+          )}
         </CardContent>
 
         <CardFooter className="flex flex-col items-center gap-4 pt-4">
           <Button
-            className="w-full max-w-md rounded-3xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-100 shadow-lg shadow-cyan-500/10 hover:bg-cyan-500/20"
+            className={`w-full max-w-md rounded-3xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-100 shadow-lg shadow-cyan-500/10 hover:bg-cyan-500/20 ${
+              loading
+                ? "cursor-wait"
+                : activeType === null ||
+                    (activeType === "text" && !textValue.trim()) ||
+                    (activeType !== "text" && !selectedFile)
+                  ? "cursor-not-allowed"
+                  : "cursor-pointer"
+            }`}
             disabled={
               loading ||
               activeType === null ||
@@ -191,10 +241,27 @@ const UploadSection = () => {
           >
             {loading ? "Analyzing content..." : "Generate Study Material"}
           </Button>
-           {loading && <Button variant="ghost" className="text-slate-200" onClick={cancelAnalyze}>Cancel analysis</Button>}
-          {!loading && error && lastInput && <Button variant="secondary" onClick={() => handleSubmit(lastInput)}>Retry last upload</Button>}
+          {loading && (
+            <Button
+              variant="ghost"
+              className="text-slate-200 cursor-pointer"
+              onClick={cancelAnalyze}
+            >
+              Cancel analysis
+            </Button>
+          )}
+          {!loading && error && lastInput && (
+            <Button
+              variant="secondary"
+              className="cursor-pointer"
+              onClick={() => handleSubmit(lastInput)}
+            >
+              Retry last upload
+            </Button>
+          )}
           <p className="text-center text-sm text-slate-400 max-w-xl">
-            Once analysis completes, you can review topic summaries, difficulty levels, and export your notes as Markdown or PDF.
+            Once analysis completes, you can review topic summaries, difficulty
+            levels, and export your notes as Markdown or PDF.
           </p>
         </CardFooter>
       </Card>
