@@ -123,6 +123,13 @@ const UploadSection = () => {
         ? `${selectedFile.name} selected`
         : "No document selected yet";
 
+  const isFormInvalid =
+    activeType === null ||
+    (activeType === "text" && !textValue.trim()) ||
+    (activeType !== "text" && !selectedFile);
+
+  const isGenerateDisabled = loading || isFormInvalid;
+
   return (
     <section id="upload" className="space-y-6" aria-labelledby="upload-heading">
       <Card className="bg-zinc-900/95 border border-white/10 shadow-xl shadow-cyan-500/10">
@@ -224,19 +231,12 @@ const UploadSection = () => {
           <Button
             className={`w-full max-w-md rounded-3xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-100 shadow-lg shadow-cyan-500/10 hover:bg-cyan-500/20 ${
               loading
-                ? "cursor-wait"
-                : activeType === null ||
-                    (activeType === "text" && !textValue.trim()) ||
-                    (activeType !== "text" && !selectedFile)
-                  ? "cursor-not-allowed"
+                ? "cursor-wait! disabled:cursor-wait!"
+                : isFormInvalid
+                  ? "disabled:cursor-not-allowed!"
                   : "cursor-pointer"
             }`}
-            disabled={
-              loading ||
-              activeType === null ||
-              (activeType === "text" && !textValue.trim()) ||
-              (activeType !== "text" && !selectedFile)
-            }
+            disabled={isGenerateDisabled}
             onClick={handleGenerateClick}
           >
             {loading ? "Analyzing content..." : "Generate Study Material"}
