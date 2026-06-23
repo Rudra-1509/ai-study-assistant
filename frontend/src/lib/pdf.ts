@@ -5,7 +5,12 @@ interface PdfTextOptions {
 }
 
 const escapePdfText = (value: string) =>
-  value.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+    value
+    .normalize("NFKD")
+    .replace(/[^\x20-\x7E]/g, "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)");
 
 const wrapText = (text: string, maxChars: number) => {
   const lines: string[] = [];
@@ -32,7 +37,12 @@ export const generateStudyNotesPdf = ({ title, meta, sections }: PdfTextOptions)
   const pageHeight = 792;
   const margin = 48;
   const bottom = 52;
-  const objects: string[] = [];
+  const objects: string[] = [
+  "<< /Type /Catalog /Pages 2 0 R >>",
+  "",
+  "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+  "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>",
+  ];
   const pages: number[] = [];
   let currentLines: Array<{ text: string; x: number; y: number; size: number; bold?: boolean }> = [];
   let y = pageHeight - margin;
@@ -41,7 +51,7 @@ export const generateStudyNotesPdf = ({ title, meta, sections }: PdfTextOptions)
     if (!currentLines.length) return;
     const stream = ["BT", ...currentLines.map((line) => {
       const font = line.bold ? "F2" : "F1";
-      return `/${font} ${line.size} Tf ${line.x} ${line.y} Td (${escapePdfText(line.text)}) Tj`;
+      return `/${font} ${line.size} Tf 1 0 0 1 ${line.x} ${line.y} Tm (${escapePdfText(line.text)}) Tj`;
     }), "ET"].join("\n");
     const contentId = objects.push(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
     const pageId = objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentId} 0 R >>`);
@@ -67,12 +77,9 @@ export const generateStudyNotesPdf = ({ title, meta, sections }: PdfTextOptions)
   });
   addPage();
 
-  const catalog = `<< /Type /Catalog /Pages 2 0 R >>`;
+  
   const kids = pages.map((id) => `${id} 0 R`).join(" ");
-  const pageTree = `<< /Type /Pages /Kids [${kids}] /Count ${pages.length} >>`;
-  const helvetica = `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>`;
-  const helveticaBold = `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>`;
-  objects.unshift(catalog, pageTree, helvetica, helveticaBold);
+  objects[1] = `<< /Type /Pages /Kids [${kids}] /Count ${pages.length} >>`;
 
   let offset = 0;
   const chunks = ["%PDF-1.4\n"];

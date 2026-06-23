@@ -1,0 +1,1214 @@
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a/frontend/src/api/analyze.ts b/frontend/src/api/analyze.ts
+index f33560dfbe533f7e2855700b8890a094188ff46f..8e81787a9f00c8b397d41f5649af7b3e1da369d9 100644
+--- a/frontend/src/api/analyze.ts
++++ b/frontend/src/api/analyze.ts
+@@ -1,28 +1,32 @@
+ const API_BASE_URL = import.meta.env.VITE_API_URL;
+ import type { StudyInput, StudyResponse } from "../types/study";
+ 
+-
+-export async function analyze(input: StudyInput): Promise<StudyResponse> {
++export async function analyze(input: StudyInput, signal?: AbortSignal): Promise<StudyResponse> {
+   const formData = new FormData();
+ 
+   formData.append("input_type", input.input_type);
+ 
+   if (input.input_type === "text") {
+     formData.append("content", input.content);
+   }
+ 
+   if (input.input_type === "pdf" || input.input_type === "image") {
+-    formData.append("file", input.file); 
++    formData.append("file", input.file);
+   }
++
+   const response = await fetch(`${API_BASE_URL}/analyze`, {
+     method: "POST",
+     body: formData,
++    signal,
+   });
+ 
+   if (!response.ok) {
+-    const errorText = await response.text();
+-    throw new Error(errorText || "Failed to analyze input");
++    const contentType = response.headers.get("content-type") ?? "";
++    const detail = contentType.includes("application/json")
++      ? JSON.stringify(await response.json())
++      : await response.text();
++    throw new Error(detail || `Analysis failed with status ${response.status}`);
+   }
+ 
+   return response.json();
+ }
+diff --git a/frontend/src/components/Header.tsx b/frontend/src/components/Header.tsx
+index 514aae9b7ff4ce48a0295ea282fadd5cd252c3fb..9a8fa73391606b8a7fd502cdb46d4c31c34f07be 100644
+--- a/frontend/src/components/Header.tsx
++++ b/frontend/src/components/Header.tsx
+@@ -1,17 +1,32 @@
++import { ArrowRight, CheckCircle2 } from "lucide-react";
+ import TitleBar from "./TitleBar";
++import { Button } from "./ui/button";
+ 
+ const Header = () => {
+   return (
+-    <header className="space-y-3">
+-      <TitleBar/>
+-      <ul className="max-w-xl space-y-1 text-sm text-muted-foreground text-cyan-50 list-disc pl-5">
+-        <li>Upload text, PDFs, or images</li>
+-        <li>Only one document is allowed</li>
+-        <li>We analyze your material and extract key topics</li>
+-        <li>Generate structured study content for effective learning</li>
+-      </ul>
++    <header className="space-y-8 rounded-[2rem] border border-white/10 bg-white/[0.03] p-5 shadow-2xl shadow-cyan-950/30 sm:p-8">
++      <TitleBar />
++      <div className="grid gap-8 lg:grid-cols-[1.25fr_0.75fr] lg:items-end">
++        <div className="space-y-5">
++          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-cyan-200">AI study companion</p>
++          <h1 className="text-4xl font-black leading-tight tracking-tight text-white sm:text-5xl">
++            Turn dense notes into clear, exportable study guides.
++          </h1>
++          <p className="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
++            Upload text, PDFs, or images and get structured topics, keywords, difficulty cues, and polished notes ready for review.
++          </p>
++          <Button asChild className="rounded-full bg-cyan-300 px-6 text-slate-950 hover:bg-cyan-200">
++            <a href="#upload">Create study material <ArrowRight aria-hidden="true" /></a>
++          </Button>
++        </div>
++        <ul className="space-y-3 rounded-3xl border border-cyan-300/20 bg-slate-950/50 p-5 text-sm text-cyan-50">
++          {["One document at a time", "OCR and topic extraction", "Markdown and PDF exports", "Long-note navigation tools"].map((item) => (
++            <li key={item} className="flex items-center gap-3"><CheckCircle2 className="size-4 text-cyan-300" aria-hidden="true" />{item}</li>
++          ))}
++        </ul>
++      </div>
+     </header>
+   );
+ };
+ 
+ export default Header;
+diff --git a/frontend/src/components/TitleBar.tsx b/frontend/src/components/TitleBar.tsx
+index 3a2632197a27959c7ae365df78212455537ac271..e0c3342491e398f934e13def13641cfa183fc560 100644
+--- a/frontend/src/components/TitleBar.tsx
++++ b/frontend/src/components/TitleBar.tsx
+@@ -1,23 +1,15 @@
+ import { useNavigate } from "react-router-dom";
+ 
+ const TitleBar = () => {
+-  const navigate=useNavigate();
++  const navigate = useNavigate();
+   return (
+-    <div className="flex items-center gap-40">
+-      <img
+-        src="/logo.png"
+-        alt="MakeMeStudy logo"
+-        className="w-30 md:w-36 object-contain cursor-pointer"
+-        onClick={() => navigate("/")}
+-      />
+-      <h1
+-        className="text-2xl text-cyan-100 font-semibold cursor-pointer hover:[text-shadow:0_0_10px_rgba(255,255,255,0.5)] transition duration-300"
+-        onClick={() => navigate("/")}
+-      >
+-        MakeMeStudy
+-      </h1>
++    <div className="flex items-center justify-between gap-4">
++      <button className="flex items-center gap-3 rounded-full focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-cyan-300/60" onClick={() => navigate("/")} aria-label="Go to MakeMeStudy home">
++        <img src="/logo.png" alt="" className="w-20 object-contain sm:w-24" />
++        <span className="text-xl font-bold tracking-tight text-cyan-100 sm:text-2xl">MakeMeStudy</span>
++      </button>
+     </div>
+   );
+ };
+ 
+ export default TitleBar;
+diff --git a/frontend/src/components/UploadCard.tsx b/frontend/src/components/UploadCard.tsx
+index 8e0ebe5dd5afd025904070182e94fd7beb4d16a6..e0958241a8325abc7d537aab5c5bafb8c0f276dd 100644
+--- a/frontend/src/components/UploadCard.tsx
++++ b/frontend/src/components/UploadCard.tsx
+@@ -1,124 +1,96 @@
+-import { useRef } from "react";
++import { useRef, useState } from "react";
+ import { cn } from "@/lib/utils";
+ import { Badge } from "@/components/ui/badge";
+ import { Separator } from "@/components/ui/separator";
+-import {
+-  Card,
+-  CardDescription,
+-  CardHeader,
+-  CardTitle,
+-  CardFooter,
+-} from "@/components/ui/card";
++import { Card, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+ import { Button } from "./ui/button";
++
+ interface UploadCardProps {
+   type: "pdf" | "image";
+   imgSrc: string;
+   isActive: boolean;
+   onFileSelect: (file: File) => void;
+   disabled: boolean;
+   onRemove: () => void;
++  error?: string | null;
+ }
+ 
+-export function UploadCard({
+-  imgSrc,
+-  type,
+-  isActive,
+-  onFileSelect,
+-  disabled,
+-  onRemove,
+-}: UploadCardProps) {
++export function UploadCard({ imgSrc, type, isActive, onFileSelect, disabled, onRemove, error }: UploadCardProps) {
+   const inputRef = useRef<HTMLInputElement>(null);
++  const [dragging, setDragging] = useState(false);
++  const accept = type === "pdf" ? "application/pdf" : "image/*";
++  const label = type === "pdf" ? "PDF" : "image";
++
++  const chooseFile = (file?: File) => {
++    if (file && !disabled) onFileSelect(file);
++    setDragging(false);
++  };
++
+   return (
+-    <div
+-      className={`block 
+-      ${disabled ? "opacity-45" : ""}
+-    `}
+-    >
++    <div className={cn("block", disabled && "opacity-45")}>
+       <input
+         ref={inputRef}
+-        key={isActive ? "active" : "inactive"}
+         type="file"
+         className="hidden"
+         disabled={disabled}
+-        accept={type === "pdf" ? "application/pdf" : "image/*"}
++        accept={accept}
++        aria-label={`Choose ${label} file`}
+         onChange={(e) => {
+-          const file = e.target.files?.[0];
+-          if (file) {
+-            onFileSelect(file);
+-          }
++          chooseFile(e.target.files?.[0]);
++          e.currentTarget.value = "";
+         }}
+       />
+       <Card
++        role="button"
++        tabIndex={disabled || isActive ? -1 : 0}
++        aria-label={`Upload ${label} by clicking or dragging a file here`}
++        onKeyDown={(e) => {
++          if ((e.key === "Enter" || e.key === " ") && !isActive && !disabled) inputRef.current?.click();
++        }}
+         onClick={() => {
+-          if (!isActive && !disabled) {
+-            inputRef.current?.click();
+-          }
++          if (!isActive && !disabled) inputRef.current?.click();
++        }}
++        onDragOver={(e) => {
++          if (disabled) return;
++          e.preventDefault();
++          setDragging(true);
++        }}
++        onDragLeave={() => setDragging(false)}
++        onDrop={(e) => {
++          e.preventDefault();
++          chooseFile(e.dataTransfer.files?.[0]);
+         }}
+         className={cn(
+-          "group relative transition border border-border rounded-xl overflow-hidden max-w-[16rem] mx-auto",
++          "group relative transition border border-border rounded-xl overflow-hidden max-w-[16rem] mx-auto outline-none focus-visible:ring-3 focus-visible:ring-cyan-300/60",
++          dragging && "border-cyan-300 bg-cyan-400/10",
+           !disabled && !isActive && "hover:border-white/20 hover:bg-muted/30",
+-
+-          // cursor states
+-          disabled
+-            ? "cursor-not-allowed"
+-            : isActive
+-              ? "cursor-default"
+-              : "cursor-pointer",
++          disabled ? "cursor-not-allowed" : isActive ? "cursor-default" : "cursor-pointer",
+         )}
+       >
+-        {/* overlay */}
+         <div className="absolute inset-0 z-10 pointer-events-none bg-linear-to-t from-black/20 via-black/5 to-transparent rounded-xl" />
+-
+-        {/* image */}
+         <div className="relative z-20 aspect-square overflow-hidden">
+           <img
+             src={isActive ? "/upload-done.png" : imgSrc}
+-            alt={type}
++            alt=""
+             className={cn(
+               "h-full w-full object-cover opacity-85 transition-all duration-300",
+-              !disabled &&
+-                !isActive && [
+-                  "group-hover:opacity-100",
+-                  "group-hover:scale-[1.03]",
+-                  "group-hover:drop-shadow-[0_0_18px_rgba(255,255,255,0.35)]",
+-                ],
++              !disabled && !isActive && ["group-hover:opacity-100", "group-hover:scale-[1.03]", "group-hover:drop-shadow-[0_0_18px_rgba(255,255,255,0.35)]"],
+             )}
+           />
+         </div>
+         <Separator className="h-px bg-white/40" />
+         <CardHeader className="relative z-30 p-4">
+-          <div className="absolute top-3 right-3">
+-            <Badge variant="outline" className="text-white">
+-              {type.toUpperCase()}
+-            </Badge>
+-          </div>
+-
+-          <CardTitle className="text-white font-medium">
+-            {type === "pdf" ? "Upload PDF" : "Upload Image"}
+-          </CardTitle>
+-
++          <div className="absolute top-3 right-3"><Badge variant="outline" className="text-white">{type.toUpperCase()}</Badge></div>
++          <CardTitle className="text-white font-medium">{type === "pdf" ? "Upload PDF" : "Upload Image"}</CardTitle>
+           <CardDescription className="text-sm text-white/80 mt-1">
+-            {isActive
+-              ? "Upload Done"
+-              : type === "pdf"
+-                ? "PDF extractions are not the best FYI."
+-                : "Image extractions are good."}
++            {isActive ? "Ready to analyze" : `Click or drop a ${label} here.`}
+           </CardDescription>
++          {error && <p className="text-xs text-red-300" role="alert">{error}</p>}
+         </CardHeader>
+         <CardFooter className="relative z-30">
+-          {isActive && (
+-            <Button
+-              onClick={(e) => {
+-                e.stopPropagation();
+-                onRemove();
+-              }}
+-              className="mx-auto border rounded-full border-red-500 text-red-400 pb-3 hover:bg-red-300 hover:text-red-600 hover:cursor-pointer"
+-            >
+-              Remove X
+-            </Button>
+-          )}
++          {isActive && <Button onClick={(e) => { e.stopPropagation(); onRemove(); }} className="mx-auto border rounded-full border-red-500 text-red-300 hover:bg-red-300 hover:text-red-700">Remove</Button>}
+         </CardFooter>
+       </Card>
+     </div>
+   );
+ }
+diff --git a/frontend/src/components/UploadSection.tsx b/frontend/src/components/UploadSection.tsx
+index 889e8c4480691b9211245e8ec4317779926c7f64..9e8eca73ce72097e38befeab321bb4a362e80481 100644
+--- a/frontend/src/components/UploadSection.tsx
++++ b/frontend/src/components/UploadSection.tsx
+@@ -1,194 +1,208 @@
+-import { useEffect, useState } from "react";
++import { useEffect, useMemo, useState } from "react";
+ import { useNavigate } from "react-router-dom";
+ import { Button } from "@/components/ui/button";
+ import { Textarea } from "@/components/ui/textarea";
+ import { UploadCard } from "./UploadCard";
+ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+ import useAnalyze from "@/hooks/useAnalyze";
++import type { StudyInput } from "@/types/study";
+ 
+ const progressStages = [
+   "Preparing your document",
+   "Running OCR and ingestion",
+   "Chunking content",
+   "Building embeddings",
+   "Finding structure",
+   "Generating study notes",
+ ];
+ 
+ const UploadSection = () => {
+   const navigate = useNavigate();
+   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+   const [activeType, setActiveType] = useState<"pdf" | "image" | "text" | null>(null);
+   const [textValue, setTextValue] = useState("");
+   const [progressStep, setProgressStep] = useState(0);
++  const [fileErrors, setFileErrors] = useState<Partial<Record<"pdf" | "image", string>>>({});
++  const [lastInput, setLastInput] = useState<StudyInput | null>(null);
+ 
+-  const { loading, error, runAnalyze } = useAnalyze();
++  const { loading, error, runAnalyze, cancelAnalyze } = useAnalyze();
+ 
+   useEffect(() => {
+     if (!loading) {
+       return;
+     }
+ 
+     const interval = window.setInterval(() => {
+-      setProgressStep((current) => Math.min(current + 1, progressStages.length - 1));
++      setProgressStep((current) => Math.min(current + 1, progressStages.length - 2));
+     }, 1200);
+ 
+     return () => window.clearInterval(interval);
+   }, [loading]);
+ 
+-  const handleSubmit = async () => {
+-    if (!activeType) return;
+-    setProgressStep(0);
+-    try{
+-          let result;
+-
+-    if (activeType === "image" && selectedFile) {
+-      result = await runAnalyze({
+-        input_type: "image",
+-        file: selectedFile,
+-      });
+-    } else if (activeType === "pdf" && selectedFile) {
+-      result = await runAnalyze({
+-        input_type: "pdf",
+-        file: selectedFile,
+-      });
+-    } else if (activeType === "text" && textValue.trim()) {
+-      result = await runAnalyze({
+-        input_type: "text",
+-        content: textValue,
+-      });
+-    }
++  const buildInput = () => {
++    if (activeType === "image" && selectedFile) return { input_type: "image" as const, file: selectedFile };
++    if (activeType === "pdf" && selectedFile) return { input_type: "pdf" as const, file: selectedFile };
++    if (activeType === "text" && textValue.trim()) return { input_type: "text" as const, content: textValue.trim() };
++    return null;
++  };
+ 
+-    if (result) {
++  const handleSubmit = async (input = buildInput()) => {
++    if (!input) return;
++    setProgressStep(0);
++    setLastInput(input);
++    try {
++      const result = await runAnalyze(input);
++      setProgressStep(progressStages.length - 1);
+       navigate("/output", { state: { result: result.result, duration: result.duration } });
++    } catch (err) {
++      console.warn(err);
+     }
++  };
++
++  const validateFile = (type: "pdf" | "image", file: File) => {
++    const isValidType = type === "pdf" ? file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf") : file.type.startsWith("image/");
++    if (!isValidType) return `Please choose a valid ${type === "pdf" ? "PDF" : "image"} file.`;
++    if (file.size > 15 * 1024 * 1024) return "Files must be smaller than 15 MB for reliable processing.";
++    return null;
++  };
++
++  const handleFileSelect = (type: "pdf" | "image", file: File) => {
++    const validation = validateFile(type, file);
++    setFileErrors((current) => ({ ...current, [type]: validation ?? undefined }));
++    if (validation) {
++      setSelectedFile(null);
++      if (activeType === type) setActiveType(null);
++      return;
+     }
+-    catch(err){
+-      console.log(err);
+-    }
++    setTextValue("");
++    setSelectedFile(file);
++    setActiveType(type);
+   };
+ 
+   const resetAll = () => {
+     setSelectedFile(null);
+     setActiveType(null);
+     setTextValue("");
+     setProgressStep(0);
++    setFileErrors({});
+   };
+ 
+-  const progressPercent = Math.round(
+-    (progressStep / Math.max(progressStages.length - 1, 1)) * 100,
+-  );
++  const progressPercent = useMemo(() => {
++    if (!loading && progressStep === progressStages.length - 1) return 100;
++    return Math.min(92, Math.round(((progressStep + 1) / progressStages.length) * 100));
++  }, [loading, progressStep]);
+ 
+   const selectedLabel =
+     activeType === "text"
+       ? `${textValue.trim().length} characters ready`
+       : selectedFile
+       ? `${selectedFile.name} selected`
+       : "No document selected yet";
+ 
+   return (
+-    <section className="space-y-6">
++    <section id="upload" className="space-y-6" aria-labelledby="upload-heading">
+       <Card className="bg-zinc-900/95 border border-white/10 shadow-xl shadow-cyan-500/10">
+         <CardHeader>
+           <CardTitle className="text-white text-2xl tracking-tight">
+             Create a polished study summary
+           </CardTitle>
+           <CardDescription className="text-slate-300 leading-relaxed">
+             Upload a PDF or image, or paste your text, then let the assistant analyze it through OCR, chunking, embeddings, clustering, and generation.
+           </CardDescription>
+         </CardHeader>
+ 
+         <CardContent className="space-y-6">
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+             <UploadCard
+               imgSrc="/pdf-upload.png"
+               type="pdf"
+               isActive={activeType === "pdf"}
+-              onFileSelect={(file) => {
+-                setSelectedFile(file);
+-                setActiveType("pdf");
+-              }}
++              error={fileErrors.pdf ?? null}
++              onFileSelect={(file) => handleFileSelect("pdf", file)}
+               disabled={activeType !== null && activeType !== "pdf"}
+               onRemove={resetAll}
+             />
+             <UploadCard
+               imgSrc="img-upload.png"
+               type="image"
+               isActive={activeType === "image"}
+-              onFileSelect={(file) => {
+-                setSelectedFile(file);
+-                setActiveType("image");
+-              }}
++              error={fileErrors.image ?? null}
++              onFileSelect={(file) => handleFileSelect("image", file)}
+               disabled={activeType !== null && activeType !== "image"}
+               onRemove={resetAll}
+             />
+           </div>
+ 
+           <div className="space-y-3">
+             <Textarea
+               className="w-full min-h-52 rounded-3xl p-4 text-slate-100 bg-slate-950/80 border border-white/10 focus:border-cyan-400"
+               placeholder="Or paste your text here..."
+               disabled={activeType !== null && activeType !== "text"}
+               onChange={(e) => {
+-                setTextValue(e.target.value);
+-                setActiveType("text");
++                const nextValue = e.target.value;
++                setTextValue(nextValue);
++                setSelectedFile(null);
++                setFileErrors({});
++                setActiveType(nextValue.trim() ? "text" : null);
+               }}
+               value={textValue}
+             />
+             <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400">
+               <span>{selectedLabel}</span>
+               {activeType === "text" && (
+                 <Button
+                   variant="ghost"
+                   className="text-red-300 hover:text-red-400 hover:underline"
+                   onClick={resetAll}
+                 >
+                   Clear text
+                 </Button>
+               )}
+             </div>
+           </div>
+ 
+           {loading && (
+             <div className="rounded-3xl border border-cyan-500/20 bg-cyan-500/10 p-4">
+               <div className="flex items-center justify-between text-sm text-cyan-100 mb-3">
+                 <span className="font-medium">Analyzing document</span>
+                 <span>{progressPercent}%</span>
+               </div>
+-              <div className="h-2 overflow-hidden rounded-full bg-white/10">
++              <div className="h-2 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100}>
+                 <div
+                   className="h-full rounded-full bg-cyan-400 transition-all duration-500"
+                   style={{ width: `${progressPercent}%` }}
+                 />
+               </div>
+               <p className="mt-3 text-sm text-slate-200">
+-                {progressStages[progressStep]}
++                {loading && progressStep === progressStages.length - 2 ? "Finalizing results from the backend" : progressStages[progressStep]}
+               </p>
+             </div>
+           )}
+ 
+-          {error && <p className="text-center text-red-400 text-sm">{error}</p>}
++          {error && <div className="rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-center text-sm text-red-200" role="alert">{error}</div>}
+         </CardContent>
+ 
+         <CardFooter className="flex flex-col items-center gap-4 pt-4">
+           <Button
+             className="w-full max-w-md rounded-3xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-100 shadow-lg shadow-cyan-500/10 hover:bg-cyan-500/20"
+             disabled={
+               loading ||
+               activeType === null ||
+               (activeType === "text" && !textValue.trim()) ||
+               (activeType !== "text" && !selectedFile)
+             }
+-            onClick={handleSubmit}
++            onClick={() => handleSubmit()}
+           >
+             {loading ? "Analyzing content..." : "Generate Study Material"}
+           </Button>
++          {loading && <Button variant="ghost" className="text-slate-200" onClick={cancelAnalyze}>Cancel analysis</Button>}
++          {!loading && error && lastInput && <Button variant="secondary" onClick={() => handleSubmit(lastInput)}>Retry last upload</Button>}
+           <p className="text-center text-sm text-slate-400 max-w-xl">
+             Once analysis completes, you can review topic summaries, difficulty levels, and export your notes as Markdown or PDF.
+           </p>
+         </CardFooter>
+       </Card>
+     </section>
+   );
+ };
+ export default UploadSection;
+diff --git a/frontend/src/components/ui/badge.tsx b/frontend/src/components/ui/badge.tsx
+index ba40cc16b668193bf10587a8643f3c03cf0982ca..0ebc7bfbf1d800cd4fa6a38e21cb15744f8138f2 100644
+--- a/frontend/src/components/ui/badge.tsx
++++ b/frontend/src/components/ui/badge.tsx
+@@ -1,25 +1,26 @@
++/* eslint-disable react-refresh/only-export-components */
+ import * as React from "react"
+ import { Slot } from "@radix-ui/react-slot"
+ import { cva, type VariantProps } from "class-variance-authority"
+ 
+ import { cn } from "@/lib/utils"
+ 
+ const badgeVariants = cva(
+   "inline-flex items-center justify-center rounded-full border border-transparent px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden",
+   {
+     variants: {
+       variant: {
+         default: "bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
+         secondary:
+           "bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
+         destructive:
+           "bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+         outline:
+           "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+         ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+         link: "text-primary underline-offset-4 [a&]:hover:underline",
+       },
+     },
+     defaultVariants: {
+       variant: "default",
+     },
+diff --git a/frontend/src/components/ui/button.tsx b/frontend/src/components/ui/button.tsx
+index 915ea2a0f6b9e5741ac068acbaa0240437a519f3..11f8c72e7b980f6ef805cd2e50633b960e0b78aa 100644
+--- a/frontend/src/components/ui/button.tsx
++++ b/frontend/src/components/ui/button.tsx
+@@ -1,25 +1,26 @@
++/* eslint-disable react-refresh/only-export-components */
+ import * as React from "react"
+ import { Slot } from "@radix-ui/react-slot"
+ import { cva, type VariantProps } from "class-variance-authority"
+ 
+ import { cn } from "@/lib/utils"
+ 
+ const buttonVariants = cva(
+   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+   {
+     variants: {
+       variant: {
+         default: "bg-primary text-primary-foreground hover:bg-primary/90",
+         destructive:
+           "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+         outline:
+           "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
+         secondary:
+           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+         ghost:
+           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+         link: "text-primary underline-offset-4 hover:underline",
+       },
+       size: {
+         default: "h-9 px-4 py-2 has-[>svg]:px-3",
+         xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
+diff --git a/frontend/src/hooks/useAnalyze.ts b/frontend/src/hooks/useAnalyze.ts
+index f1b73407dcfccd9805d3e99a117c9ca0ad60ebbf..b5e118224a5a389f7b2d9e32ff2a1f7c654cc320 100644
+--- a/frontend/src/hooks/useAnalyze.ts
++++ b/frontend/src/hooks/useAnalyze.ts
+@@ -1,41 +1,59 @@
+-import { useState } from "react";
++import { useRef, useState } from "react";
+ import { analyze } from "@/api/analyze";
+ import type { StudyInput, StudyResponse } from "@/types/study";
+ 
+ interface AnalyzeResult {
+   result: StudyResponse;
+   duration: number;
+ }
+ 
++const friendlyError = (err: unknown) => {
++  if (err instanceof DOMException && err.name === "AbortError") {
++    return "Analysis was canceled. You can adjust your upload and try again.";
++  }
++  const raw = err instanceof Error ? err.message : String(err || "");
++  if (/ocr|image|pdf|parse|extract/i.test(raw)) {
++    return "We couldn't read enough text from that file. Try a clearer scan, a smaller PDF, or paste the text directly.";
++  }
++  if (/api|network|fetch|failed|500|502|503|504/i.test(raw)) {
++    return "The study generation service did not respond successfully. Please retry in a moment.";
++  }
++  return raw || "Something went wrong while analyzing your material.";
++};
++
+ const useAnalyze = () => {
+   const [loading, setLoading] = useState(false);
+   const [error, setError] = useState<string | null>(null);
++  const controllerRef = useRef<AbortController | null>(null);
++
++  const cancelAnalyze = () => {
++    controllerRef.current?.abort();
++  };
+ 
+   const runAnalyze = async (input: StudyInput): Promise<AnalyzeResult> => {
++    controllerRef.current?.abort();
++    const controller = new AbortController();
++    controllerRef.current = controller;
+     setLoading(true);
+     setError(null);
+     const startTime = performance.now();
+ 
+     try {
+-      const result = await analyze(input);
+-      return {
+-        result,
+-        duration: performance.now() - startTime,
+-      };
++      const result = await analyze(input, controller.signal);
++      return { result, duration: performance.now() - startTime };
+     } catch (err: unknown) {
+-      const message =
+-        err instanceof Error
+-          ? err.message
+-          : String(err) || "Something went wrong";
++      const message = friendlyError(err);
+       setError(message);
+-      if (err instanceof Error) throw err;
+       throw new Error(message);
+     } finally {
+-      setLoading(false);
++      if (controllerRef.current === controller) {
++        controllerRef.current = null;
++        setLoading(false);
++      }
+     }
+   };
+ 
+-  return { loading, error, runAnalyze };
++  return { loading, error, runAnalyze, cancelAnalyze };
+ };
+ 
+ export default useAnalyze;
+diff --git a/frontend/src/lib/pdf.ts b/frontend/src/lib/pdf.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..55796df8601fce89fe9b4bd8da3bf615fb902a69
+--- /dev/null
++++ b/frontend/src/lib/pdf.ts
+@@ -0,0 +1,125 @@
++interface PdfTextOptions {
++  title: string;
++  meta: string;
++  sections: Array<{ heading: string; keywords: string[]; body: string }>;
++}
++
++const escapePdfText = (value: string) =>
++  value
++    .normalize("NFKD")
++    .replace(/[\u0300-\u036f]/g, "")
++    .replace(/[•·]/g, "-")
++    .replace(/[“”]/g, '"')
++    .replace(/[‘’]/g, "'")
++    .replace(/[–—]/g, "-")
++    .replace(/[^ -~]/g, " ")
++    .replace(/\\/g, "\\\\")
++    .replace(/\(/g, "\\(")
++    .replace(/\)/g, "\\)");
++
++const stripMarkdown = (value: string) =>
++  value
++    .replace(/^#{1,6}\s+/gm, "")
++    .replace(/`{1,3}/g, "")
++    .replace(/[*_~]/g, "")
++    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
++
++const wrapText = (text: string, maxChars: number) => {
++  const lines: string[] = [];
++  text.split(/\n/).forEach((paragraph) => {
++    const trimmed = stripMarkdown(paragraph).trim();
++    if (!trimmed) {
++      lines.push("");
++      return;
++    }
++    const words = trimmed.split(/\s+/).filter(Boolean);
++    let line = "";
++    words.forEach((word) => {
++      const next = line ? `${line} ${word}` : word;
++      if (next.length > maxChars) {
++        if (line) lines.push(line);
++        line = word;
++      } else {
++        line = next;
++      }
++    });
++    if (line) lines.push(line);
++  });
++  return lines;
++};
++
++export const generateStudyNotesPdf = ({ title, meta, sections }: PdfTextOptions) => {
++  const pageWidth = 612;
++  const pageHeight = 792;
++  const margin = 48;
++  const bottom = 52;
++  const pageLineSets: Array<Array<{ text: string; x: number; y: number; size: number; bold?: boolean }>> = [];
++  let currentLines: Array<{ text: string; x: number; y: number; size: number; bold?: boolean }> = [];
++  let y = pageHeight - margin;
++
++  const flushPage = () => {
++    if (!currentLines.length) return;
++    pageLineSets.push(currentLines);
++    currentLines = [];
++    y = pageHeight - margin;
++  };
++
++  const addLine = (text: string, size = 11, bold = false, gap = 16) => {
++    if (y < bottom) flushPage();
++    currentLines.push({ text, x: margin, y, size, bold });
++    y -= gap;
++  };
++
++  addLine(title, 24, true, 30);
++  addLine(meta, 10, false, 24);
++
++  sections.forEach((section, index) => {
++    if (index > 0) y -= 8;
++    addLine(section.heading, 16, true, 22);
++    addLine(`Keywords: ${section.keywords.join(", ")}`, 10, false, 18);
++    wrapText(section.body, 88).forEach((line) => addLine(line || " ", 11, false, line ? 15 : 8));
++  });
++  flushPage();
++
++  const objects: string[] = [];
++  const addObject = (body: string) => {
++    objects.push(body);
++    return objects.length;
++  };
++
++  const catalogId = addObject("__CATALOG__");
++  const pagesId = addObject("__PAGES__");
++  const fontRegularId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
++  const fontBoldId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
++  const pageIds: number[] = [];
++
++  pageLineSets.forEach((lines) => {
++    const stream = [
++      "BT",
++      ...lines.map((line) => {
++        const font = line.bold ? "F2" : "F1";
++        return `/${font} ${line.size} Tf 1 0 0 1 ${line.x} ${line.y} Tm (${escapePdfText(line.text)}) Tj`;
++      }),
++      "ET",
++    ].join("\n");
++    const contentId = addObject(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
++    const pageId = addObject(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${fontRegularId} 0 R /F2 ${fontBoldId} 0 R >> >> /Contents ${contentId} 0 R >>`);
++    pageIds.push(pageId);
++  });
++
++  objects[catalogId - 1] = `<< /Type /Catalog /Pages ${pagesId} 0 R >>`;
++  objects[pagesId - 1] = `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageIds.length} >>`;
++
++  let offset = 0;
++  const chunks = ["%PDF-1.4\n"];
++  offset += chunks[0].length;
++  const xref = ["0000000000 65535 f "];
++  objects.forEach((object, index) => {
++    xref.push(`${String(offset).padStart(10, "0")} 00000 n `);
++    const chunk = `${index + 1} 0 obj\n${object}\nendobj\n`;
++    chunks.push(chunk);
++    offset += chunk.length;
++  });
++  chunks.push(`xref\n0 ${objects.length + 1}\n${xref.join("\n")}\ntrailer << /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${offset}\n%%EOF`);
++  return new Blob(chunks, { type: "application/pdf" });
++};
+diff --git a/frontend/src/pages/Home.tsx b/frontend/src/pages/Home.tsx
+index 268e5d2fbf023cfe15ef14f687e13d0d43b3101e..065bba57f85192d04557ac7497bd161129104f8b 100644
+--- a/frontend/src/pages/Home.tsx
++++ b/frontend/src/pages/Home.tsx
+@@ -1,17 +1,15 @@
+ import Header from "@/components/Header";
+ import UploadSection from "@/components/UploadSection";
+ 
+ const Home = () => {
+   return (
+-    <>
+-      <div className="min-h-screen flex justify-center">
+-        <div className="w-full max-w-3xl bg-linear-to-b from-zinc-800 to-zinc-700 px-4 pt-6 space-y-10">
+-          <Header />
+-          <UploadSection/>
+-        </div>
+-      </div>
+-    </>
++    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.20),transparent_35%),linear-gradient(135deg,#0f172a,#27272a_55%,#111827)] px-4 py-6 sm:py-10">
++      <main className="mx-auto w-full max-w-5xl space-y-8">
++        <Header />
++        <UploadSection />
++      </main>
++    </div>
+   );
+ };
+ 
+ export default Home;
+diff --git a/frontend/src/pages/Output.tsx b/frontend/src/pages/Output.tsx
+index 0196bd1afc092c447456cc5db9231c0cc6c45dfa..5f344d25d5dad6ae12813bfd76254cf46f94c12c 100644
+--- a/frontend/src/pages/Output.tsx
++++ b/frontend/src/pages/Output.tsx
+@@ -1,247 +1,145 @@
++import { useMemo, useState } from "react";
+ import { Navigate, useLocation } from "react-router-dom";
++import ReactMarkdown from "react-markdown";
++import remarkGfm from "remark-gfm";
++import { Check, Clipboard, Download, FileText } from "lucide-react";
+ import TitleBar from "@/components/TitleBar";
+ import { Button } from "@/components/ui/button";
+ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
++import { generateStudyNotesPdf } from "@/lib/pdf";
+ import type { StudyResponse } from "@/types/study";
+-import ReactMarkdown from "react-markdown";
+ 
+-const cleanMarkdown = (text: string) => {
+-  return text
++const cleanMarkdown = (text: string) =>
++  text
+     .replace(/\r/g, "")
+-    .replace(/\u2022/g, "-") // normalize bullet dots
+-    .replace(/\*\s/g, "- ") // normalize weird bullets
+-    .replace(/ +/g, " ") // remove extra spaces
++    .replace(/\u2022/g, "-")
++    .replace(/^[ \t]*[•·][ \t]+/gm, "- ")
++    .replace(/[ \t]+$/gm, "")
+     .trim();
+-};
+-
+-const summarizeDifficulty = (result: StudyResponse) => {
+-  return Object.values(result).reduce<Record<string, number>>((acc, topic) => {
+-    acc[topic.difficulty] = (acc[topic.difficulty] ?? 0) + 1;
+-    return acc;
+-  }, {});
+-};
+-
+ const formatWordCount = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
++const titleFor = (id: string) => `Topic ${parseInt(id, 10) + 1}`;
+ 
+-const buildMarkdown = (result: StudyResponse, durationSeconds: number) => {
+-  const lines = [
+-    "# Generated Study Notes",
+-    "",
+-    `Processed in ${durationSeconds.toFixed(1)} seconds`,
+-    `Topics: ${Object.keys(result).length}`,
+-    `Total words: ${Object.values(result).reduce(
+-      (sum, topic) => sum + formatWordCount(topic.explanation),
+-      0,
+-    )}`,
+-    "",
+-  ];
++const summarizeDifficulty = (result: StudyResponse) => Object.values(result).reduce<Record<string, number>>((acc, topic) => {
++  acc[topic.difficulty] = (acc[topic.difficulty] ?? 0) + 1;
++  return acc;
++}, {});
+ 
++const buildMarkdown = (result: StudyResponse, durationSeconds: number) => {
++  const lines = ["# Generated Study Notes", "", `Processed in ${durationSeconds.toFixed(1)} seconds`, `Topics: ${Object.keys(result).length}`, `Total words: ${Object.values(result).reduce((sum, topic) => sum + formatWordCount(topic.explanation), 0)}`, ""];
+   Object.entries(result).forEach(([id, topic]) => {
+-    lines.push(`## Topic ${parseInt(id, 10) + 1}: ${topic.difficulty.toUpperCase()}`);
+-    lines.push(`**Keywords:** ${topic.keywords.join(", ")}`);
+-    lines.push("");
+-    lines.push(topic.explanation.trim());
+-    lines.push("");
++    lines.push(`## ${titleFor(id)}: ${topic.difficulty.toUpperCase()}`);
++    lines.push(`**Keywords:** ${topic.keywords.join(", ")}`, "", topic.explanation.trim(), "");
+   });
+-
+   return lines.join("\n\n");
+ };
+ 
+ const Output = () => {
+   const { state } = useLocation();
+   const result = state?.result as StudyResponse | undefined;
+   const duration = typeof state?.duration === "number" ? state.duration : 0;
++  const [copiedId, setCopiedId] = useState<string | null>(null);
++  const [openTopics, setOpenTopics] = useState<Record<string, boolean>>({});
+ 
+-  if (!result) {
+-    return <Navigate to="/" replace />;
+-  }
++  const safeResult = useMemo(() => result ?? {}, [result]);
++  const entries = Object.entries(safeResult);
++  const topicCount = entries.length;
++  const totalWords = entries.reduce((sum, [, topic]) => sum + formatWordCount(topic.explanation), 0);
++  const difficultyCounts = summarizeDifficulty(safeResult);
++  const markdown = useMemo(() => buildMarkdown(safeResult, duration / 1000), [safeResult, duration]);
+ 
+-  const topicCount = Object.keys(result).length;
+-  const totalWords = Object.values(result).reduce(
+-    (sum, topic) => sum + formatWordCount(topic.explanation),
+-    0,
+-  );
+-  const difficultyCounts = summarizeDifficulty(result);
++  if (!result) return <Navigate to="/" replace />;
+ 
+-  const downloadMarkdown = () => {
+-    const markdown = buildMarkdown(result, duration / 1000);
+-    const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
++  const downloadBlob = (blob: Blob, filename: string) => {
+     const url = URL.createObjectURL(blob);
+     const link = document.createElement("a");
+     link.href = url;
+-    link.download = "study-notes.md";
++    link.download = filename;
+     document.body.appendChild(link);
+     link.click();
+     link.remove();
+     URL.revokeObjectURL(url);
+   };
+ 
+-  const exportPDF = () => {
+-    const printWindow = window.open("", "_blank");
+-    if (!printWindow) return;
+-
+-    const title = "Generated Study Notes";
+-    const content = Object.entries(result)
+-      .map(([id, topic]) => {
+-        const keywords = topic.keywords.map((word) => `• ${word}`).join("\n");
+-        return `
+-          <section style="margin-bottom:1.5rem;">
+-            <h2 style="font-size:18px;margin:0 0 0.5rem;color:#111;">Topic ${parseInt(id, 10) + 1} · ${topic.difficulty.toUpperCase()}</h2>
+-            <div style="margin-bottom:0.75rem;color:#0f172a;font-size:14px;">
+-              Keywords: ${topic.keywords.join(", ")}
+-            </div>
+-            <div style="font-size:14px;line-height:1.7;color:#202020;white-space:pre-wrap;">${topic.explanation}</div>
+-          </section>`;
+-      })
+-      .join("");
+-
+-    printWindow.document.write(`
+-      <html>
+-        <head>
+-          <title>${title}</title>
+-          <style>
+-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 24px; background: #fff; color: #111; }
+-            h1 { margin-bottom: 0.5rem; font-size: 28px; }
+-            .meta { margin-bottom: 1.5rem; color: #475569; font-size: 14px; }
+-            h2 { margin: 1.5rem 0 0.5rem; font-size: 18px; }
+-            ul { margin: 0.5rem 0 1rem 1.2rem; }
+-            li { margin-bottom: 0.4rem; }
+-            p { margin: 0 0 1rem 0; }
+-          </style>
+-        </head>
+-        <body>
+-          <h1>${title}</h1>
+-          <div class="meta">Processed in ${(duration / 1000).toFixed(1)} seconds · ${topicCount} topics · ${totalWords} total words</div>
+-          ${content}
+-        </body>
+-      </html>
+-    `);
+-
+-    printWindow.document.close();
+-    printWindow.focus();
+-    printWindow.print();
++  const downloadMarkdown = () => downloadBlob(new Blob([markdown], { type: "text/markdown;charset=utf-8" }), "study-notes.md");
++  const exportPDF = () => downloadBlob(generateStudyNotesPdf({
++    title: "Generated Study Notes",
++    meta: `Processed in ${(duration / 1000).toFixed(1)} seconds · ${topicCount} topics · ${totalWords} total words`,
++    sections: entries.map(([id, topic]) => ({ heading: `${titleFor(id)} · ${topic.difficulty.toUpperCase()}`, keywords: topic.keywords, body: cleanMarkdown(topic.explanation) })),
++  }), "study-notes.pdf");
++
++  const copyTopic = async (id: string, text: string) => {
++    await navigator.clipboard.writeText(text);
++    setCopiedId(id);
++    window.setTimeout(() => setCopiedId(null), 1600);
+   };
+ 
+-  const mainTitle = "Generated Study Notes";
+-
+   return (
+-    <>
+-      <div className="min-h-screen flex justify-center">
+-        <div className="w-full max-w-4xl bg-linear-to-b from-zinc-800 to-zinc-700 px-4 pt-6 pb-12 space-y-10">
+-          <TitleBar />
+-
+-          <Card className="border border-white/10 bg-zinc-900/95 shadow-xl shadow-cyan-500/10">
+-            <CardHeader>
+-              <div>
+-                <CardTitle className="text-3xl text-white tracking-tight">
+-                  {mainTitle}
+-                </CardTitle>
+-                <CardDescription className="text-slate-300 mt-2">
+-                  Review the AI-generated study notes, difficulty levels, and export them for sharing.
+-                </CardDescription>
+-              </div>
+-              <div className="flex flex-wrap items-center gap-3">
+-                <Button variant="secondary" onClick={downloadMarkdown}>
+-                  Export Markdown
+-                </Button>
+-                <Button variant="default" onClick={exportPDF}>
+-                  Export as PDF
+-                </Button>
+-              </div>
+-            </CardHeader>
+-
+-            <CardContent className="grid gap-4 md:grid-cols-3 md:items-stretch">
+-              <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-4">
+-                <p className="text-sm uppercase tracking-[0.3em] text-slate-400 mb-2">Processing time</p>
+-                <p className="text-3xl font-semibold text-white">{(duration / 1000).toFixed(1)}s</p>
+-              </div>
+-              <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-4">
+-                <p className="text-sm uppercase tracking-[0.3em] text-slate-400 mb-2">Topics generated</p>
+-                <p className="text-3xl font-semibold text-white">{topicCount}</p>
+-              </div>
+-              <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-4">
+-                <p className="text-sm uppercase tracking-[0.3em] text-slate-400 mb-2">Total words</p>
+-                <p className="text-3xl font-semibold text-white">{totalWords}</p>
+-              </div>
+-            </CardContent>
+-
+-            <CardFooter className="flex flex-wrap gap-3 text-sm text-slate-300">
+-              {Object.entries(difficultyCounts).map(([level, count]) => (
+-                <span
+-                  key={level}
+-                  className="rounded-full border border-white/10 bg-white/5 px-3 py-2"
+-                >
+-                  {level.charAt(0).toUpperCase() + level.slice(1)}: {count}
+-                </span>
+-              ))}
+-            </CardFooter>
+-          </Card>
+-
+-          {Object.entries(result).map(([id, topic]) => (
+-            <div key={id} className="bg-zinc-900 rounded-3xl p-6 space-y-4 border border-white/5">
+-              <div className="flex flex-wrap items-center justify-between gap-3">
+-                <div>
+-                  <h2 className="text-2xl font-semibold text-white">
+-                    Topic {parseInt(id, 10) + 1}
+-                  </h2>
+-                  <p className="text-sm text-slate-400 mt-1">
+-                    Difficulty: {topic.difficulty.charAt(0).toUpperCase() + topic.difficulty.slice(1)}
+-                  </p>
+-                </div>
+-                <div className="flex flex-wrap gap-2">
+-                  {topic.keywords.map((k: string) => (
+-                    <span
+-                      key={k}
+-                      className="rounded-full bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-200"
++    <div className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.16),transparent_32%),linear-gradient(135deg,#0f172a,#27272a_55%,#111827)] px-4 py-6 sm:py-10">
++      <main className="mx-auto w-full max-w-6xl space-y-8">
++        <TitleBar />
++        <Card className="border border-white/10 bg-zinc-900/95 shadow-xl shadow-cyan-500/10">
++          <CardHeader className="gap-5 sm:flex-row sm:items-start sm:justify-between">
++            <div><CardTitle className="text-3xl text-white tracking-tight">Generated Study Notes</CardTitle><CardDescription className="text-slate-300 mt-2">Navigate topics, copy sections, and export browser-independent PDF or Markdown files.</CardDescription></div>
++            <div className="flex flex-wrap items-center gap-3"><Button variant="secondary" onClick={downloadMarkdown}><FileText />Export Markdown</Button><Button onClick={exportPDF}><Download />Download PDF</Button></div>
++          </CardHeader>
++          <CardContent className="grid gap-4 md:grid-cols-3">
++            {[['Processing time', `${(duration / 1000).toFixed(1)}s`], ['Topics generated', topicCount], ['Total words', totalWords]].map(([label, value]) => (
++              <div key={label} className="rounded-3xl border border-white/10 bg-slate-950/80 p-4"><p className="mb-2 text-sm uppercase tracking-[0.3em] text-slate-400">{label}</p><p className="text-3xl font-semibold text-white">{value}</p></div>
++            ))}
++          </CardContent>
++          <CardFooter className="flex flex-wrap gap-3 text-sm text-slate-300">{Object.entries(difficultyCounts).map(([level, count]) => <span key={level} className="rounded-full border border-white/10 bg-white/5 px-3 py-2">{level.charAt(0).toUpperCase() + level.slice(1)}: {count}</span>)}</CardFooter>
++        </Card>
++
++        <div className="grid gap-6 lg:grid-cols-[260px_1fr] lg:items-start">
++          <aside className="sticky top-4 rounded-3xl border border-white/10 bg-zinc-900/90 p-5 text-slate-200 shadow-xl shadow-cyan-950/20">
++            <h2 className="text-lg font-semibold text-white">Contents</h2>
++            <p className="mt-1 text-sm text-slate-400">Jump to any generated topic.</p>
++            <nav className="mt-4 space-y-2" aria-label="Study notes table of contents">
++              {entries.map(([id, topic]) => <a key={id} href={`#topic-${id}`} className="block rounded-2xl px-3 py-2 text-sm hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">{titleFor(id)} <span className="text-slate-400">· {topic.difficulty}</span></a>)}
++            </nav>
++          </aside>
++
++          <section className="space-y-5" aria-label="Generated topic sections">
++            {entries.map(([id, topic]) => {
++              const isOpen = openTopics[id] ?? true;
++              const topicText = `${titleFor(id)}\nKeywords: ${topic.keywords.join(", ")}\n\n${cleanMarkdown(topic.explanation)}`;
++              return (
++                <article id={`topic-${id}`} key={id} className="scroll-mt-6 rounded-3xl border border-white/5 bg-zinc-900 p-5 shadow-lg shadow-black/20 sm:p-6">
++                  <div className="flex flex-wrap items-start justify-between gap-3">
++                    <button className="text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300" onClick={() => setOpenTopics((current) => ({ ...current, [id]: !isOpen }))} aria-expanded={isOpen} aria-controls={`topic-panel-${id}`}>
++                      <h2 className="text-2xl font-semibold text-white">{titleFor(id)}</h2>
++                      <p className="mt-1 text-sm text-slate-400">Difficulty: {topic.difficulty.charAt(0).toUpperCase() + topic.difficulty.slice(1)} · {formatWordCount(topic.explanation)} words</p>
++                    </button>
++                    <Button variant="secondary" size="sm" onClick={() => copyTopic(id, topicText)}>{copiedId === id ? <Check /> : <Clipboard />}{copiedId === id ? "Copied" : "Copy"}</Button>
++                  </div>
++                  <div className="mt-4 flex flex-wrap gap-2">{topic.keywords.map((k) => <span key={k} className="rounded-full bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-200">{k}</span>)}</div>
++                  {isOpen && <div id={`topic-panel-${id}`} className="prose prose-invert mt-5 max-w-none text-slate-200 prose-pre:overflow-x-auto prose-pre:rounded-2xl prose-pre:border prose-pre:border-cyan-300/20 prose-pre:bg-slate-950 prose-pre:p-4 prose-code:text-cyan-100">
++                    <ReactMarkdown
++                      remarkPlugins={[remarkGfm]}
++                      components={{
++                        h2: ({ children }) => <h2 className="mb-3 mt-7 border-b border-white/10 pb-2 text-2xl font-bold tracking-tight text-white first:mt-0">{children}</h2>,
++                        h3: ({ children }) => <h3 className="mb-2 mt-5 text-xl font-semibold text-cyan-100">{children}</h3>,
++                        h4: ({ children }) => <h4 className="mb-2 mt-4 text-lg font-semibold text-slate-100">{children}</h4>,
++                        p: ({ children }) => <p className="my-3 leading-7 text-slate-200">{children}</p>,
++                        ul: ({ children }) => <ul className="my-3 ml-6 list-disc space-y-1 text-slate-200">{children}</ul>,
++                        ol: ({ children }) => <ol className="my-3 ml-6 list-decimal space-y-1 text-slate-200">{children}</ol>,
++                        li: ({ children }) => <li className="leading-7">{children}</li>,
++                        code: ({ children }) => <code className="rounded bg-slate-950 px-1.5 py-0.5 font-mono text-sm text-cyan-100">{children}</code>,
++                        pre: ({ children }) => <pre className="my-4 overflow-x-auto rounded-2xl border border-cyan-300/20 bg-slate-950 p-4 text-sm text-cyan-50">{children}</pre>,
++                        strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
++                      }}
+                     >
+-                      {k}
+-                    </span>
+-                  ))}
+-                </div>
+-              </div>
+-
+-              <div className="text-slate-200 leading-relaxed">
+-                <ReactMarkdown
+-                  components={{
+-                    h2: ({ children }) => (
+-                      <h2 className="text-xl font-semibold text-white mt-6 mb-2">
+-                        {children}
+-                      </h2>
+-                    ),
+-                    p: ({ children }) => (
+-                      <p className="my-3 leading-relaxed text-slate-200">
+-                        {children}
+-                      </p>
+-                    ),
+-                    strong: ({ children }) => (
+-                      <strong className="font-semibold text-white">
+-                        {children}
+-                      </strong>
+-                    ),
+-                    ul: ({ children }) => (
+-                      <ul className="list-disc ml-6 my-2 space-y-1 text-slate-200">
+-                        {children}
+-                      </ul>
+-                    ),
+-                    ol: ({ children }) => (
+-                      <ol className="list-decimal ml-6 my-2 space-y-1 text-slate-200">
+-                        {children}
+-                      </ol>
+-                    ),
+-                    li: ({ children }) => (
+-                      <li className="leading-relaxed">{children}</li>
+-                    ),
+-                  }}
+-                >
+-                  {cleanMarkdown(topic.explanation)}
+-                </ReactMarkdown>
+-              </div>
+-            </div>
+-          ))}
++                      {cleanMarkdown(topic.explanation)}
++                    </ReactMarkdown>
++                  </div>}
++                </article>
++              );
++            })}
++          </section>
+         </div>
+-      </div>
+-    </>
++      </main>
++    </div>
+   );
+ };
+ 
+ export default Output;
+ 
+EOF
+)

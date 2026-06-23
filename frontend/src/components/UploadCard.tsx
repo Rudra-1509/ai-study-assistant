@@ -23,18 +23,19 @@ export function UploadCard({ imgSrc, type, isActive, onFileSelect, disabled, onR
 
   const chooseFile = (file?: File) => {
     if (file && !disabled) onFileSelect(file);
+    if (inputRef.current) inputRef.current.value = "";
     setDragging(false);
   };
   return (
     <div className={cn("block", disabled && "opacity-45")}>
       <input
         ref={inputRef}
-        key={isActive ? "active" : "inactive"}
         type="file"
         className="hidden"
         disabled={disabled}
         accept={accept}
         aria-label={`Choose ${label} file`}
+        onClick={(e) => e.stopPropagation()}
         onChange={(e) => chooseFile(e.target.files?.[0])}
       />
       <Card
@@ -45,9 +46,6 @@ export function UploadCard({ imgSrc, type, isActive, onFileSelect, disabled, onR
           if ((e.key === "Enter" || e.key === " ") && !isActive && !disabled) inputRef.current?.click();
         }}
         onClick={() => {
-          if (!isActive && !disabled) {
-            inputRef.current?.click();
-          }
           if (!isActive && !disabled) inputRef.current?.click();
         }}
         onDragOver={(e) => {

@@ -20,9 +20,11 @@ import type { StudyResponse } from "@/types/study";
 const cleanMarkdown = (text: string) =>
   text
     .replace(/\r/g, "")
+    .replace(/\\n/g, "\n")
     .replace(/\u2022/g, "-")
-    .replace(/\*\s/g, "- ")
-    .replace(/ +/g, " ")
+    .replace(/^\s*\*\s+/gm, "- ")
+    .replace(/[^\S\n]+/g, " ")
+    .replace(/^[^\S\n]*(#{1,6})[^\S\n]+/gm, "$1 ")
     .trim();
 
 const formatWordCount = (text: string) =>
@@ -304,7 +306,21 @@ ${cleanMarkdown(topic.explanation)}`;
                       id={`topic-panel-${id}`}
                       className="prose prose-invert mt-5 max-w-none text-slate-200 prose-pre:overflow-x-auto prose-pre:rounded-2xl prose-pre:border prose-pre:border-cyan-300/20 prose-pre:bg-slate-950 prose-pre:p-4 prose-code:text-cyan-100"
                     >
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          h2: ({ children }) => (
+                            <h2 className="mb-3 mt-7 border-b border-cyan-300/20 pb-2 text-2xl font-semibold tracking-tight text-cyan-100 first:mt-0">
+                              {children}
+                            </h2>
+                          ),
+                          h3: ({ children }) => (
+                            <h3 className="mb-2 mt-5 text-xl font-semibold text-white">
+                              {children}
+                            </h3>
+                          ),
+                        }}
+                      >
                         {cleanMarkdown(topic.explanation)}
                       </ReactMarkdown>
                     </div>
