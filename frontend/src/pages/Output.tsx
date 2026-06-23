@@ -164,7 +164,7 @@ const Output = () => {
               <Button
                 variant="secondary"
                 onClick={downloadMarkdown}
-                className="cursor-pointer text-white border border-cyan-400/30 bg-white/5 hover:bg-cyan-500/10 hover:text-white hover:shadow-[0_0_18px_rgba(34,211,238,0.45)] transition-all duration-300"
+                className="cursor-pointer text-white border border-cyan-400/30 bg-cyan-500/10 hover:bg-cyan-500/10 hover:text-white hover:shadow-[0_0_18px_rgba(34,211,238,0.45)] transition-all duration-300"
               >
                 <FileText className="mr-2 h-4 w-4" />
                 Export Markdown
