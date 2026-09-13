@@ -1,7 +1,10 @@
+import os
 import re
 import asyncio
 from difflib import SequenceMatcher
 from typing import Dict
+
+from embeddings.embedding_utils import cosine_similarity, embed_header_safe
 
 # =========================
 # GLOBAL CONCURRENCY CONTROL
@@ -234,15 +237,40 @@ def filter_sparse_sections(
     ]
 
 
-def dedupe_chunks(chunks: list[str]) -> list[str]:
+def dedupe_chunks(
+    chunks: list[str],
+    embeddings: list[list[float]] | None = None,
+) -> tuple[list[str], list[list[float]] | None]:
+    """
+    Removes duplicate chunks (by first-300-char key) - same rule as before.
+
+    [CHANGE] Now optionally accepts the parallel `embeddings` list (one
+    embedding per chunk, same order as `chunks`) and keeps it aligned with
+    the deduped chunks. This matters because generate_explanation_for_topic
+    dedupes chunks BEFORE scoring sections, and we must never let the
+    embeddings list drift out of sync with the chunks list it describes.
+
+    Pass embeddings=None (default) to use exactly as before, when no
+    embeddings are available for this call.
+    """
+    if embeddings is not None and len(embeddings) != len(chunks):
+        raise ValueError(
+            "chunks and embeddings must be the same length and in the same order."
+        )
+
     seen = set()
-    out = []
-    for chunk in chunks:
+    out_chunks: list[str] = []
+    out_embeddings: list[list[float]] | None = [] if embeddings is not None else None
+
+    for i, chunk in enumerate(chunks):
         key = chunk[:300].lower().strip()
         if key not in seen:
             seen.add(key)
-            out.append(chunk)
-    return out
+            out_chunks.append(chunk)
+            if out_embeddings is not None:
+                out_embeddings.append(embeddings[i])
+
+    return out_chunks, out_embeddings
 
 
 # =========================
@@ -386,95 +414,67 @@ Context:
 # CONTEXT SELECTION
 # =========================
 
-# Maps sets of header trigger words → bonus content words to count in chunks.
-# Catches cases where the header ("Achievements and Honours") has no direct
-# lexical overlap with the most relevant chunk ("Ballon d'Or", "Golden Shoe").
-#
-# Multiple groups can match a single header — all matching bonus word sets
-# are unioned so a header like "Career Records and Statistics" benefits from
-# both the achievements group and the statistics group simultaneously.
-SEMANTIC_HINTS: list[tuple[frozenset[str], list[str]]] = [
-    (
-        frozenset({
-            "achievement", "achievements", "honour", "honours",
-            "honor", "honors", "award", "awards", "record", "records",
-            "accolade", "accolades", "title", "titles", "trophy", "trophies",
-        }),
-        [
-            "award", "ballon", "trophy", "record", "title",
-            "honour", "honor", "accolade", "golden", "prize", "medal",
-            "best", "winner", "voted",
-        ],
-    ),
-    (
-        frozenset({
-            "career", "transfer", "transfers", "club",
-            "signing", "move", "contract",
-        }),
-        [
-            "signed", "transfer", "fee", "contract", "joined",
-            "debut", "loan", "permanent", "manager", "bid", "sell",
-        ],
-    ),
-    (
-        frozenset({
-            "early", "life", "childhood", "background",
-            "born", "family", "personal",
-        }),
-        [
-            "born", "childhood", "school", "father", "mother",
-            "family", "grew", "youth", "hometown", "siblings", "parish",
-        ],
-    ),
-    (
-        frozenset({
-            "style", "tactics", "playing", "technique",
-            "skill", "skills", "ability", "abilities",
-        }),
-        [
-            "dribble", "pace", "agile", "technique", "skill",
-            "free", "kick", "header", "vision", "assist", "movement",
-        ],
-    ),
-    (
-        frozenset({
-            "statistics", "stats", "goals", "appearances",
-            "scoring", "numbers",
-        }),
-        [
-            "scored", "goals", "appearances", "assists",
-            "hat", "trick", "season", "matches", "minutes", "tally",
-        ],
-    ),
-    (
-        frozenset({
-            "international", "national", "country", "caps", "squad",
-        }),
-        [
-            "international", "national", "cap", "country",
-            "squad", "world", "cup", "euro", "qualifier", "portugal",
-        ],
-    ),
-]
+# [CHANGE] SEMANTIC_HINTS (the hardcoded header-keyword -> bonus-word
+# dictionary) has been REMOVED. It only ever generalized to concepts a
+# developer had manually anticipated (e.g. it knew "achievements" implied
+# "ballon"/"trophy" for football biographies, but had nothing for a physics
+# or biology topic). It's replaced below by embedding-based semantic
+# similarity in get_section_context(), which works for any topic because it
+# doesn't rely on anyone enumerating synonyms in advance.
+
+# Hybrid scoring weights - configurable constants rather than magic numbers
+# scattered through get_section_context(). Override via env vars if a
+# deployment wants to lean more/less on semantic vs. exact-word matching.
+SEMANTIC_WEIGHT = float(os.getenv("SECTION_SEMANTIC_WEIGHT", "25"))
+LEXICAL_WEIGHT = float(os.getenv("SECTION_LEXICAL_WEIGHT", "1.0"))
+KEYWORD_WEIGHT = float(os.getenv("SECTION_KEYWORD_WEIGHT", "1.0"))
+
+
+async def get_header_embedding_for_scoring(header: str) -> list[float] | None:
+    """
+    Requirement: embed each section header exactly ONCE (not once per
+    chunk). Called a single time per header in generate_explanation_for_topic,
+    before the per-chunk scoring loop in get_section_context runs.
+
+    Strips the markdown '## ' prefix first so we embed natural-language
+    text ("Career and Transfers"), not markdown syntax.
+    """
+    return await embed_header_safe(strip_header_prefix(header))
 
 
 def get_section_context(
     header: str,
     chunks: list[str],
+    chunk_embeddings: list[list[float]] | None = None,
+    header_embedding: list[float] | None = None,
     keywords: list[str] | None = None,
     limit: int = 1,
     used_chunk_ids: set[int] | None = None,
     reuse_penalty: int = 30,              # [CHANGE 3] parameterised, scaled by difficulty
 ) -> tuple[str, list[int]]:
     """
-    Scores every chunk against this header using six layers:
+    Scores every chunk against this header using a hybrid of:
 
-      1. Unique word overlap with header words          (base)
-      2. Exact header phrase present in chunk           (+20)
-      3. Per-word frequency across the chunk
-      4. Keyword frequency bonus                        (+5 per occurrence)
-      5. [CHANGE 2] Semantic category bonus via SEMANTIC_HINTS
-      6. Reuse penalty for already-assigned chunks      (-reuse_penalty)
+      1. Lexical score: unique word overlap + exact-phrase bonus (+20) +
+         per-word frequency across the chunk. Weighted by LEXICAL_WEIGHT.
+      2. Keyword score: keyword frequency bonus (+5 per occurrence).
+         Weighted by KEYWORD_WEIGHT.
+      3. Semantic score [REPLACES SEMANTIC_HINTS]: cosine similarity
+         between the header's embedding and this chunk's embedding.
+         Weighted by SEMANTIC_WEIGHT. This is what lets a chunk like
+         "He signed a four-year contract and made his debut" rank highly
+         for a header like "Career and Transfers" even though it shares
+         no literal words with the header - the old hardcoded dictionary
+         could only do this for topics someone had anticipated in advance;
+         embeddings generalize to any topic.
+      4. Reuse penalty for chunks already assigned to an earlier header
+         (unchanged, still subtracted after weighting).
+
+    Graceful degradation: if header_embedding is None (the header failed
+    to embed upstream) or chunk_embeddings wasn't provided/doesn't line up
+    with chunks, the semantic term is simply skipped (contributes 0) and
+    scoring falls back to lexical + keyword only. This function never
+    raises because of a missing/failed embedding.
 
     Returns (context_string, list_of_selected_chunk_indices).
     """
@@ -484,12 +484,11 @@ def get_section_context(
     header_lower = header.lower()
     header_words = set(re.findall(r"\w+", header_lower))
 
-    # Resolve semantic bonus words for this header once outside the chunk loop.
-    # Union across all matching groups so multi-category headers get full coverage.
-    active_bonus_words: set[str] = set()
-    for trigger_words, bonus_words in SEMANTIC_HINTS:
-        if any(tw in header_lower for tw in trigger_words):
-            active_bonus_words.update(bonus_words)
+    have_embeddings = (
+        header_embedding is not None
+        and chunk_embeddings is not None
+        and len(chunk_embeddings) == len(chunks)
+    )
 
     scored: list[tuple[float, int, str]] = []
 
@@ -497,29 +496,33 @@ def get_section_context(
         chunk_lower = chunk.lower()
         chunk_words = set(re.findall(r"\w+", chunk_lower))
 
-        # 1. Unique word overlap
-        score: float = len(header_words & chunk_words)
-
-        # 2. Exact phrase bonus
+        # 1. Lexical score: unique word overlap + exact phrase + frequency
+        lexical_score: float = len(header_words & chunk_words)
         if header_lower in chunk_lower:
-            score += 20
-
-        # 3. Per-word frequency
+            lexical_score += 20
         for word in header_words:
-            score += chunk_lower.count(word)
+            lexical_score += chunk_lower.count(word)
 
-        # 4. Keyword frequency
+        # 2. Keyword score
+        keyword_score: float = 0.0
         if keywords:
             for kw in keywords:
                 kw_lower = kw.lower().strip()
                 if kw_lower:
-                    score += chunk_lower.count(kw_lower) * 5
+                    keyword_score += chunk_lower.count(kw_lower) * 5
 
-        # 5. Semantic bonus
-        for bonus_word in active_bonus_words:
-            score += chunk_lower.count(bonus_word) * 5
+        # 3. Semantic score (embedding-based, replaces SEMANTIC_HINTS)
+        semantic_score = 0.0
+        if have_embeddings:
+            semantic_score = cosine_similarity(header_embedding, chunk_embeddings[i])
 
-        # 6. Reuse penalty
+        score = (
+            LEXICAL_WEIGHT * lexical_score
+            + KEYWORD_WEIGHT * keyword_score
+            + SEMANTIC_WEIGHT * semantic_score
+        )
+
+        # 4. Reuse penalty
         if i in used_chunk_ids:
             score -= reuse_penalty
 
@@ -701,29 +704,38 @@ async def generate_explanation_for_topic(
     keywords: list[str],
     difficulty: str,
     llm_client,
+    chunk_embeddings: list[list[float]] | None = None,
     sequential: bool = True,   # [CHANGE 4] default flipped to True
 ) -> str:
 
-    # ── Step 1: dedupe full pool ──────────────────────────────────────────────
-    all_chunks = dedupe_chunks(chunks)
+    # ── Step 1: dedupe full pool (embeddings kept aligned if provided) ──────
+    all_chunks, all_chunk_embeddings = dedupe_chunks(chunks, chunk_embeddings)
 
     # ── Step 2: outline → similarity-dedupe → chunk-cap ──────────────────────
+    # Outline generation stays purely lexical (chunk_selector) - it doesn't
+    # need embeddings, only the per-section chunk selection below does.
     outline = await generate_section_outline(all_chunks, keywords, difficulty, llm_client)
     outline = remove_overlapping_headers(outline)
     outline = cap_outline_by_difficulty(outline, difficulty, len(all_chunks))
 
     body_headers = [h for h in outline if "conclusion" not in h.lower()]
 
-    # ── Step 3: per-header chunk selection ───────────────────────────────────
+    # ── Step 3: per-header chunk selection (hybrid: lexical+keyword+semantic) ─
     context_limit = context_limit_for_difficulty(difficulty)
     reuse_penalty = reuse_penalty_for_difficulty(difficulty)   # [CHANGE 3]
     used_chunk_ids: set[int] = set()
     header_contexts: dict[str, str] = {}
 
     for header in body_headers:
+        # One embedding per header (never per chunk) - falls back to None
+        # (and therefore lexical/keyword-only scoring) on any failure.
+        header_embedding = await get_header_embedding_for_scoring(header)
+
         context, selected_ids = get_section_context(
             header,
             all_chunks,
+            chunk_embeddings=all_chunk_embeddings,
+            header_embedding=header_embedding,
             keywords=keywords,
             limit=context_limit,
             used_chunk_ids=used_chunk_ids,
@@ -813,10 +825,16 @@ async def run_single_topic(
     keywords: list[str],
     difficulty: str,
     llm_client,
+    chunk_embeddings: list[list[float]] | None = None,
     sequential: bool = True,   # [CHANGE 4]
 ):
     explanation = await generate_explanation_for_topic(
-        chunks, keywords, difficulty, llm_client, sequential=sequential
+        chunks,
+        keywords,
+        difficulty,
+        llm_client,
+        chunk_embeddings=chunk_embeddings,
+        sequential=sequential,
     )
 
     return label, {
@@ -831,6 +849,7 @@ async def explain_all_topics(
     topic_keywords: Dict[int, list[str]],
     topic_difficulty: Dict[int, dict],
     llm_client,
+    topic_chunk_embeddings: Dict[int, list[list[float]]] | None = None,
     sequential: bool = True,   # [CHANGE 4]
 ) -> dict:
     tasks = [
@@ -840,6 +859,7 @@ async def explain_all_topics(
             topic_keywords.get(label, []),
             topic_difficulty.get(label, {}).get("difficulty", "medium"),
             llm_client,
+            chunk_embeddings=(topic_chunk_embeddings or {}).get(label),
             sequential=sequential,
         )
         for label, chunks in topic_chunks.items()
